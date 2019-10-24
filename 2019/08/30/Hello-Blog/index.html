@@ -13,7 +13,7 @@
 <meta property="og:site_name" content="程一凡">
 <meta property="og:description" content="这篇文章的主题是如何快速搭建一个博客。我采用的搭建博客的方式是Github Pages + Hexo，可以快速免费的搭建一个博客。 使用Github Pages来免费托管网页源代码：  GitHub Pages 是一种静态站点托管服务，旨在直接从 GitHub 仓库托管您的个人、组织或项目页面。  使用Hexo来生成静态页面：  Hexo 是一个快速、简洁且高效的博客框架。Hexo 使用 Mark">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-08-30T04:19:52.804Z">
+<meta property="og:updated_time" content="2019-10-24T16:41:59.597Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Hello Blog">
 <meta name="twitter:description" content="这篇文章的主题是如何快速搭建一个博客。我采用的搭建博客的方式是Github Pages + Hexo，可以快速免费的搭建一个博客。 使用Github Pages来免费托管网页源代码：  GitHub Pages 是一种静态站点托管服务，旨在直接从 GitHub 仓库托管您的个人、组织或项目页面。  使用Hexo来生成静态页面：  Hexo 是一个快速、简洁且高效的博客框架。Hexo 使用 Mark">
@@ -156,7 +156,7 @@
 <h3 id="生成静态网页代码"><a href="#生成静态网页代码" class="headerlink" title="生成静态网页代码"></a>生成静态网页代码</h3><p><code>$ hexo generate</code><br>执行完后会生成一个<code>public</code>文件夹</p>
 <h3 id="部署到个人网站"><a href="#部署到个人网站" class="headerlink" title="部署到个人网站"></a>部署到个人网站</h3><p>将上个步骤生成的<code>public</code>文件下的所有内容，都上传到<code>mutefish0.github.io</code>仓库。<br>至此已经完成博客的搭建。访问<code>https://mutefish0.github.io</code>即可查看。</p>
 <h2 id="自动化部署"><a href="#自动化部署" class="headerlink" title="自动化部署"></a>自动化部署</h2><p>安装git部署脚本<br><code>$ npm install hexo-deployer-git --save</code><br>修改配置文件<code>_confog.yml</code></p>
-<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">deploy:</span></span><br><span class="line"><span class="attr">  type:</span> <span class="string">git</span></span><br><span class="line"><span class="attr">  repo:</span> <span class="attr">https://github.com/Mutefish0/Mutefish0.github.io</span></span><br><span class="line"><span class="attr">  branch:</span> <span class="string">gh-pages</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">deploy:</span></span><br><span class="line"><span class="attr">  type:</span> <span class="string">git</span></span><br><span class="line"><span class="attr">  repo:</span> <span class="attr">https://github.com/Mutefish0/Mutefish0.github.io</span></span><br><span class="line"><span class="attr">  branch:</span> <span class="string">master</span></span><br></pre></td></tr></table></figure>
 
 <p>后续只需运行以下命令即可自动更新个人主页<br><code>hexo clean &amp;&amp; hexo deploy</code> </p>
 
