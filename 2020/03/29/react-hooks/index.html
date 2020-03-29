@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head><meta name="generator" content="Hexo 3.9.0">
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="description" content="在最近的项目在项目中使用了React Hooks进行开发。Hooks把状态、副作用与组件渲染逻辑进行了解耦，可以比较方便实现代码复用，同时替代了声明周期函数，使得代码大大简化。 使用Hooks实现一个简单的计数器组件12345678910111213import React, &amp;#123; useState &amp;#125; from &apos;react&apos;;export default function A">
+<meta name="keywords" content="react hooks useState">
+<meta property="og:type" content="article">
+<meta property="og:title" content="React Hooks之useState的原理剖析">
+<meta property="og:url" content="http://yoursite.com/2020/03/29/react-hooks/index.html">
+<meta property="og:site_name" content="程一凡">
+<meta property="og:description" content="在最近的项目在项目中使用了React Hooks进行开发。Hooks把状态、副作用与组件渲染逻辑进行了解耦，可以比较方便实现代码复用，同时替代了声明周期函数，使得代码大大简化。 使用Hooks实现一个简单的计数器组件12345678910111213import React, &amp;#123; useState &amp;#125; from &apos;react&apos;;export default function A">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2020-03-29T15:04:07.163Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="React Hooks之useState的原理剖析">
+<meta name="twitter:description" content="在最近的项目在项目中使用了React Hooks进行开发。Hooks把状态、副作用与组件渲染逻辑进行了解耦，可以比较方便实现代码复用，同时替代了声明周期函数，使得代码大大简化。 使用Hooks实现一个简单的计数器组件12345678910111213import React, &amp;#123; useState &amp;#125; from &apos;react&apos;;export default function A">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>React Hooks之useState的原理剖析</title>
+    <!-- styles -->
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- persian styles -->
+    
+      <link rel="stylesheet" href="/css/rtl.css">
+    
+    <!-- rss -->
+    
+    
+</head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/about/">关于</a></li>
+         
+          <li><a href="/archives/">归档</a></li>
+         
+          <li><a href="https://github.com/mutefish0">项目</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" href="/2020/02/23/webgl-getting-started/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/03/29/react-hooks/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://yoursite.com/2020/03/29/react-hooks/&text=React Hooks之useState的原理剖析"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/03/29/react-hooks/&is_video=false&description=React Hooks之useState的原理剖析"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=React Hooks之useState的原理剖析&body=Check out this article: http://yoursite.com/2020/03/29/react-hooks/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/03/29/react-hooks/&name=React Hooks之useState的原理剖析&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#使用Hooks实现一个简单的计数器组件"><span class="toc-number">1.</span> <span class="toc-text">使用Hooks实现一个简单的计数器组件</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#疑问"><span class="toc-number">1.1.</span> <span class="toc-text">疑问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#实现一个模拟的强制刷新"><span class="toc-number">1.2.</span> <span class="toc-text">实现一个模拟的强制刷新</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#实现一个useState"><span class="toc-number">1.3.</span> <span class="toc-text">实现一个useState</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#整理代码"><span class="toc-number">1.4.</span> <span class="toc-text">整理代码</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#多个计数器"><span class="toc-number">2.</span> <span class="toc-text">多个计数器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#先用原生的useState实现"><span class="toc-number">2.1.</span> <span class="toc-text">先用原生的useState实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#尝试用我们造的useState轮子实现"><span class="toc-number">2.2.</span> <span class="toc-text">尝试用我们造的useState轮子实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#渲染多个平级组件"><span class="toc-number">3.</span> <span class="toc-text">渲染多个平级组件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#渲染嵌套的组件"><span class="toc-number">4.</span> <span class="toc-text">渲染嵌套的组件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#条件渲染"><span class="toc-number">5.</span> <span class="toc-text">条件渲染</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        React Hooks之useState的原理剖析
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">程一凡</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2020-03-29T01:54:51.000Z" itemprop="datePublished">2020-03-29</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link" href="/tags/react-hooks-useState/">react hooks useState</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>在最近的项目在项目中使用了React Hooks进行开发。Hooks把状态、副作用与组件渲染逻辑进行了解耦，可以比较方便实现代码复用，同时替代了声明周期函数，使得代码大大简化。</p>
+<h2 id="使用Hooks实现一个简单的计数器组件"><a href="#使用Hooks实现一个简单的计数器组件" class="headerlink" title="使用Hooks实现一个简单的计数器组件"></a>使用Hooks实现一个简单的计数器组件</h2><figure class="highlight jsx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React, &#123; useState &#125; <span class="keyword">from</span> <span class="string">'react'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="function"><span class="keyword">function</span> <span class="title">App</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> [counter, setCounter] = useState(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> (</span><br><span class="line">    &lt;div&gt;</span><br><span class="line">      &lt;p&gt;counter: &#123;counter&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;hr/</span>&gt;</span><br><span class="line">      &lt;button onClick=&#123;() =&gt; setCounter(counter + <span class="number">1</span>)&#125;&gt;add&lt;<span class="regexp">/button&gt;</span></span><br><span class="line"><span class="regexp">    &lt;/</span>div&gt;</span><br><span class="line">  );</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>CodeSandbox</p>
+<iframe src="https://codesandbox.io/embed/aged-browser-s934g?fontsize=14&hidenavigation=1&theme=dark" style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;" title="aged-browser-s934g" allow="geolocation; microphone; camera; midi; vr; accelerometer; gyroscope; payment; ambient-light-sensor; encrypted-media; usb" sandbox="allow-modals allow-forms allow-popups allow-scripts allow-same-origin"></iframe>
+
+<h3 id="疑问"><a href="#疑问" class="headerlink" title="疑问"></a>疑问</h3><p>useState这个useState它是如何保存状态的？假如useState是一个纯函数，那么每次渲染的时候，都会执行<code>useState(1)</code>，那么，每次返回的<code>[counter, setCounter]</code>应该不变才对，所以useState一定有副作用。首先，<code>counter</code>这个状态一定保存在<code>App</code>这个函数之外，其次，<code>setCounter</code>能够更新这个状态，同时能够强制<code>App</code>组件的重渲染。我们来尝试实现它。</p>
+<h3 id="实现一个模拟的强制刷新"><a href="#实现一个模拟的强制刷新" class="headerlink" title="实现一个模拟的强制刷新"></a>实现一个模拟的强制刷新</h3><figure class="highlight jsx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React, &#123; useState <span class="keyword">as</span> reactUseState &#125; <span class="keyword">from</span> <span class="string">"react"</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> forceUpdate;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Wrapper</span>(<span class="params">Component</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> [, setValue] = reactUseState();</span><br><span class="line">    forceUpdate = <span class="function"><span class="params">()</span> =&gt;</span> setValue(<span class="built_in">Math</span>.random());</span><br><span class="line">    <span class="keyword">return</span> <span class="xml"><span class="tag">&lt;<span class="name">Component</span> /&gt;</span>;</span></span><br><span class="line"><span class="xml">  &#125;</span></span><br><span class="line"><span class="xml">&#125;</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">function App() &#123;</span></span><br><span class="line"><span class="xml">  const now = Date.now();</span></span><br><span class="line"><span class="xml">  return (</span></span><br><span class="line">    &lt;div&gt;</span><br><span class="line">      &lt;span&gt;now: &#123;now&#125;&lt;/span&gt;</span><br><span class="line">      &lt;hr/&gt;</span><br><span class="line">      &lt;button onClick=&#123;forceUpdate&#125;&gt;force update&lt;/button&gt;</span><br><span class="line"><span class="xml">    <span class="tag">&lt;/<span class="name">div</span>&gt;</span></span></span><br><span class="line"><span class="xml">  );</span></span><br><span class="line"><span class="xml">&#125;</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">export default Wrapper(App);</span></span><br></pre></td></tr></table></figure>
+
+<p>CodeSandbox</p>
+<iframe src="https://codesandbox.io/embed/mystifying-tereshkova-3qiw7?fontsize=14&hidenavigation=1&theme=dark" style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;" title="mystifying-tereshkova-3qiw7" allow="geolocation; microphone; camera; midi; vr; accelerometer; gyroscope; payment; ambient-light-sensor; encrypted-media; usb" sandbox="allow-modals allow-forms allow-popups allow-scripts allow-same-origin"></iframe>
+
+<h3 id="实现一个useState"><a href="#实现一个useState" class="headerlink" title="实现一个useState"></a>实现一个useState</h3><figure class="highlight jsx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React, &#123; useState <span class="keyword">as</span> reactUseState &#125; <span class="keyword">from</span> <span class="string">"react"</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> forceUpdate;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Wrapper</span>(<span class="params">Component</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> [, setValue] = reactUseState();</span><br><span class="line">    forceUpdate = <span class="function"><span class="params">()</span> =&gt;</span> setValue(<span class="built_in">Math</span>.random());</span><br><span class="line">    <span class="keyword">return</span> <span class="xml"><span class="tag">&lt;<span class="name">Component</span> /&gt;</span>;</span></span><br><span class="line"><span class="xml">  &#125;;</span></span><br><span class="line"><span class="xml">&#125;</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">// 保存状态</span></span><br><span class="line"><span class="xml">let _state = null;</span></span><br><span class="line"><span class="xml">function useState(defaultValue) &#123;</span></span><br><span class="line"><span class="xml">  if (_state == null) &#123;</span></span><br><span class="line"><span class="xml">    _state = defaultValue;</span></span><br><span class="line"><span class="xml">  &#125;</span></span><br><span class="line"><span class="xml">  return [</span></span><br><span class="line"><span class="xml">    _state,</span></span><br><span class="line"><span class="xml">    nextState =&gt; &#123;</span></span><br><span class="line"><span class="xml">      _state = nextState;</span></span><br><span class="line"><span class="xml">      forceUpdate();</span></span><br><span class="line"><span class="xml">    &#125;</span></span><br><span class="line"><span class="xml">  ];</span></span><br><span class="line"><span class="xml">&#125;</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">function App() &#123;</span></span><br><span class="line"><span class="xml">  const [counter, setCounter] = useState(1);</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">  return (</span></span><br><span class="line">    &lt;div&gt;</span><br><span class="line">      counter: &#123;counter&#125;</span><br><span class="line">      &lt;hr /&gt;</span><br><span class="line">      &lt;button onClick=&#123;() =&gt; setCounter(counter + 1)&#125;&gt;add&lt;/button&gt;</span><br><span class="line"><span class="xml">    <span class="tag">&lt;/<span class="name">div</span>&gt;</span></span></span><br><span class="line"><span class="xml">  );</span></span><br><span class="line"><span class="xml">&#125;</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">export default Wrapper(App);</span></span><br></pre></td></tr></table></figure>
+
+<p>CodeSandbox</p>
+<iframe src="https://codesandbox.io/embed/optimistic-lewin-cpcvv?fontsize=14&hidenavigation=1&theme=dark" style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;" title="optimistic-lewin-cpcvv" allow="geolocation; microphone; camera; midi; vr; accelerometer; gyroscope; payment; ambient-light-sensor; encrypted-media; usb" sandbox="allow-modals allow-forms allow-popups allow-scripts allow-same-origin"></iframe>
+
+<h3 id="整理代码"><a href="#整理代码" class="headerlink" title="整理代码"></a>整理代码</h3><p>我们在同目录下新一个文件<code>my-hooks.js</code>，把Wrapper、useState的代码拆进去</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React, &#123; useState <span class="keyword">as</span> reactUseState &#125; <span class="keyword">from</span> <span class="string">"react"</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> forceUpdate;</span><br><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">Wrapper</span>(<span class="params">Component</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> [, setValue] = reactUseState();</span><br><span class="line">    forceUpdate = <span class="function"><span class="params">()</span> =&gt;</span> setValue(<span class="built_in">Math</span>.random());</span><br><span class="line">    <span class="keyword">return</span> <span class="xml"><span class="tag">&lt;<span class="name">Component</span> /&gt;</span>;</span></span><br><span class="line"><span class="xml">  &#125;;</span></span><br><span class="line"><span class="xml">&#125;</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">// 保存状态</span></span><br><span class="line"><span class="xml">let _state = null;</span></span><br><span class="line"><span class="xml">export function useState(defaultValue) &#123;</span></span><br><span class="line"><span class="xml">  if (_state == null) &#123;</span></span><br><span class="line"><span class="xml">    _state = defaultValue;</span></span><br><span class="line"><span class="xml">  &#125;</span></span><br><span class="line"><span class="xml">  return [</span></span><br><span class="line"><span class="xml">    _state,</span></span><br><span class="line"><span class="xml">    nextState =&gt; &#123;</span></span><br><span class="line"><span class="xml">      _state = nextState;</span></span><br><span class="line"><span class="xml">      forceUpdate();</span></span><br><span class="line"><span class="xml">    &#125;</span></span><br><span class="line"><span class="xml">  ];</span></span><br><span class="line"><span class="xml">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="多个计数器"><a href="#多个计数器" class="headerlink" title="多个计数器"></a>多个计数器</h2><p>我们来尝试额外增加一个计数器</p>
+<h3 id="先用原生的useState实现"><a href="#先用原生的useState实现" class="headerlink" title="先用原生的useState实现"></a>先用原生的<code>useState</code>实现</h3><figure class="highlight jsx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React, &#123; useState &#125; <span class="keyword">from</span> <span class="string">"react"</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="function"><span class="keyword">function</span> <span class="title">App</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> [counter1, setCounter1] = useState(<span class="number">1</span>);</span><br><span class="line">  <span class="keyword">const</span> [counter2, setCounter2] = useState(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> (</span><br><span class="line">    &lt;div&gt;</span><br><span class="line">      &lt;p&gt;counter1: &#123;counter1&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter1(counter1 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">      &lt;hr /&gt;</span><br><span class="line">      &lt;p&gt;counter2: &#123;counter2&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter2(counter2 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">    &lt;<span class="regexp">/div&gt;</span></span><br><span class="line"><span class="regexp">  );</span></span><br><span class="line"><span class="regexp">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>可以看到，两个状态正常work，互相不影响。<br>CodeSandbox</p>
+<iframe src="https://codesandbox.io/embed/summer-bash-3fu29?fontsize=14&hidenavigation=1&theme=dark" style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;" title="summer-bash-3fu29" allow="geolocation; microphone; camera; midi; vr; accelerometer; gyroscope; payment; ambient-light-sensor; encrypted-media; usb" sandbox="allow-modals allow-forms allow-popups allow-scripts allow-same-origin"></iframe>
+
+<h3 id="尝试用我们造的useState轮子实现"><a href="#尝试用我们造的useState轮子实现" class="headerlink" title="尝试用我们造的useState轮子实现"></a>尝试用我们造的<code>useState</code>轮子实现</h3><figure class="highlight jsx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React <span class="keyword">from</span> <span class="string">"react"</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Wrapper, useState &#125; <span class="keyword">from</span> <span class="string">"./my-hooks"</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">App</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> [counter1, setCounter1] = useState(<span class="number">1</span>);</span><br><span class="line">  <span class="keyword">const</span> [counter2, setCounter2] = useState(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> (</span><br><span class="line">    &lt;div&gt;</span><br><span class="line">      &lt;p&gt;counter1: &#123;counter1&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter1(counter1 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">      &lt;hr /&gt;</span><br><span class="line">      &lt;p&gt;counter2: &#123;counter2&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter2(counter2 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">    &lt;<span class="regexp">/div&gt;</span></span><br><span class="line"><span class="regexp">  );</span></span><br><span class="line"><span class="regexp">&#125;</span></span><br><span class="line"><span class="regexp"></span></span><br><span class="line"><span class="regexp">export default Wrapper(App);</span></span><br></pre></td></tr></table></figure>
+
+<p>可以明显发现，在这种场景下，之前的实现不Work了。两个状态混到一起去了，互相之前有影响。那么怎么把这两个状态区分开来呢？<br>参考<a href="https://dev.to/wuz/linked-lists-in-the-wild-react-hooks-3ep8" target="_blank" rel="noopener">这篇文章</a>发现，React为每个组件维护了一个链表结构，通过链表结构来一一对应不同的状态。我们尝试来实现。<br>修改<code>my-hooks.js</code></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React, &#123; useState <span class="keyword">as</span> reactUseState &#125; <span class="keyword">from</span> <span class="string">"react"</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 一个空的头结点</span></span><br><span class="line"><span class="keyword">let</span> _stateNodeHead = &#123; <span class="attr">state</span>: <span class="string">""</span>, <span class="attr">next</span>: <span class="literal">null</span> &#125;;</span><br><span class="line"><span class="keyword">let</span> _currentStateNode = _stateNodeHead;</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> forceUpdate;</span><br><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">Wrapper</span>(<span class="params">Component</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> [, setValue] = reactUseState();</span><br><span class="line">    forceUpdate = <span class="function"><span class="params">()</span> =&gt;</span> setValue(<span class="built_in">Math</span>.random());</span><br><span class="line">    <span class="comment">// 重新渲染之前，重置指针到链表头部</span></span><br><span class="line">    _currentStateNode = _stateNodeHead;</span><br><span class="line">    <span class="keyword">return</span> <span class="xml"><span class="tag">&lt;<span class="name">Component</span> /&gt;</span>;</span></span><br><span class="line"><span class="xml">  &#125;;</span></span><br><span class="line"><span class="xml">&#125;</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">export function useState(defaultValue) &#123;</span></span><br><span class="line"><span class="xml">  // 尝试移动节点，如果不存在则创建一个</span></span><br><span class="line"><span class="xml">  if (!_currentStateNode.next) &#123;</span></span><br><span class="line"><span class="xml">    _currentStateNode.next = &#123;</span></span><br><span class="line"><span class="xml">      state: defaultValue,</span></span><br><span class="line"><span class="xml">      next: null</span></span><br><span class="line"><span class="xml">    &#125;;</span></span><br><span class="line"><span class="xml">  &#125;</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">  const node = _currentStateNode.next;</span></span><br><span class="line"><span class="xml">  // 移动节点</span></span><br><span class="line"><span class="xml">  _currentStateNode = node;</span></span><br><span class="line"><span class="xml"></span></span><br><span class="line"><span class="xml">  return [</span></span><br><span class="line"><span class="xml">    node.state,</span></span><br><span class="line"><span class="xml">    value =&gt; &#123;</span></span><br><span class="line"><span class="xml">      // 改变当前节点的状态</span></span><br><span class="line"><span class="xml">      node.state = value;</span></span><br><span class="line"><span class="xml">      // 刷新</span></span><br><span class="line"><span class="xml">      forceUpdate();</span></span><br><span class="line"><span class="xml">    &#125;</span></span><br><span class="line"><span class="xml">  ];</span></span><br><span class="line"><span class="xml">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>CodeSandbox</p>
+<iframe src="https://codesandbox.io/embed/lucid-mayer-n3mv5?fontsize=14&hidenavigation=1&theme=dark" style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;" title="lucid-mayer-n3mv5" allow="geolocation; microphone; camera; midi; vr; accelerometer; gyroscope; payment; ambient-light-sensor; encrypted-media; usb" sandbox="allow-modals allow-forms allow-popups allow-scripts allow-same-origin"></iframe>
+从结果可以看到，完美实现了功能
+
+<h2 id="渲染多个平级组件"><a href="#渲染多个平级组件" class="headerlink" title="渲染多个平级组件"></a>渲染多个平级组件</h2><p>我们尝试新增一个平级的组件</p>
+<figure class="highlight jsx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React <span class="keyword">from</span> <span class="string">"react"</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Wrapper, useState &#125; <span class="keyword">from</span> <span class="string">"./my-hooks"</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">App</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> [counter1, setCounter1] = useState(<span class="number">1</span>);</span><br><span class="line">  <span class="keyword">const</span> [counter2, setCounter2] = useState(<span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> (</span><br><span class="line">    &lt;div&gt;</span><br><span class="line">      &lt;p&gt;counter1: &#123;counter1&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter1(counter1 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">      &lt;hr /&gt;</span><br><span class="line">      &lt;p&gt;counter2: &#123;counter2&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter2(counter2 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">    &lt;<span class="regexp">/div&gt;</span></span><br><span class="line"><span class="regexp">  );</span></span><br><span class="line"><span class="regexp">&#125;</span></span><br><span class="line"><span class="regexp"></span></span><br><span class="line"><span class="regexp">function MainApp() &#123;</span></span><br><span class="line"><span class="regexp">  return (</span></span><br><span class="line"><span class="regexp">  &lt;div&gt;</span></span><br><span class="line"><span class="regexp">    &lt;h2&gt;App 1&lt;/</span>h2&gt;</span><br><span class="line">    &lt;App /&gt;</span><br><span class="line">    &lt;h2&gt;App <span class="number">2</span>&lt;<span class="regexp">/h2&gt;</span></span><br><span class="line"><span class="regexp">    &lt;App /</span>&gt;</span><br><span class="line">  &lt;<span class="regexp">/div&gt;</span></span><br><span class="line"><span class="regexp">  );</span></span><br><span class="line"><span class="regexp">&#125;</span></span><br><span class="line"><span class="regexp"></span></span><br><span class="line"><span class="regexp">export default Wrapper(MainApp);</span></span><br></pre></td></tr></table></figure>
+
+<p>CodeSandbox</p>
+<iframe src="https://codesandbox.io/embed/gallant-tree-lfhu2?fontsize=14&hidenavigation=1&theme=dark" style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;" title="gallant-tree-lfhu2" allow="geolocation; microphone; camera; midi; vr; accelerometer; gyroscope; payment; ambient-light-sensor; encrypted-media; usb" sandbox="allow-modals allow-forms allow-popups allow-scripts allow-same-origin"></iframe>
+
+<p>可以发现平级的是没问题的。</p>
+<h2 id="渲染嵌套的组件"><a href="#渲染嵌套的组件" class="headerlink" title="渲染嵌套的组件"></a>渲染嵌套的组件</h2><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React <span class="keyword">from</span> <span class="string">"react"</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Wrapper, useState &#125; <span class="keyword">from</span> <span class="string">"./my-hooks"</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">App</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> [counter1, setCounter1] = useState(<span class="number">1</span>);</span><br><span class="line">  <span class="keyword">const</span> [counter2, setCounter2] = useState(<span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> (</span><br><span class="line">    &lt;div&gt;</span><br><span class="line">      &lt;p&gt;counter1: &#123;counter1&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter1(counter1 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">      &lt;hr /&gt;</span><br><span class="line">      &lt;p&gt;counter2: &#123;counter2&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter2(counter2 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">    &lt;<span class="regexp">/div&gt;</span></span><br><span class="line"><span class="regexp">  );</span></span><br><span class="line"><span class="regexp">&#125;</span></span><br><span class="line"><span class="regexp"></span></span><br><span class="line"><span class="regexp">function MainApp() &#123;</span></span><br><span class="line"><span class="regexp">  const [counter1, setCounter1] = useState(1);</span></span><br><span class="line"><span class="regexp">  const [counter2, setCounter2] = useState(2);</span></span><br><span class="line"><span class="regexp"></span></span><br><span class="line"><span class="regexp">  return (</span></span><br><span class="line"><span class="regexp">    &lt;div&gt;</span></span><br><span class="line"><span class="regexp">      &lt;h2&gt;App 1&lt;/</span>h2&gt;</span><br><span class="line">      &lt;App /&gt;</span><br><span class="line">      &lt;h2&gt;App <span class="number">2</span>&lt;<span class="regexp">/h2&gt;</span></span><br><span class="line"><span class="regexp">      &lt;div&gt;</span></span><br><span class="line"><span class="regexp">        &lt;p&gt;counter1: &#123;counter1&#125;&lt;/</span>p&gt;</span><br><span class="line">        &lt;button onClick=&#123;() =&gt; setCounter1(counter1 + <span class="number">1</span>)&#125;&gt;add&lt;<span class="regexp">/button&gt;</span></span><br><span class="line"><span class="regexp">        &lt;hr /</span>&gt;</span><br><span class="line">        &lt;p&gt;counter2: &#123;counter2&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">        &lt;button onClick=&#123;() =&gt; setCounter2(counter2 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">      &lt;<span class="regexp">/div&gt;</span></span><br><span class="line"><span class="regexp">    &lt;/</span>div&gt;</span><br><span class="line">  );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> Wrapper(MainApp);</span><br></pre></td></tr></table></figure>
+
+<p>CodeSandbox</p>
+<iframe src="https://codesandbox.io/embed/competent-water-v8r5r?fontsize=14&hidenavigation=1&theme=dark" style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;" title="competent-water-v8r5r" allow="geolocation; microphone; camera; midi; vr; accelerometer; gyroscope; payment; ambient-light-sensor; encrypted-media; usb" sandbox="allow-modals allow-forms allow-popups allow-scripts allow-same-origin"></iframe>
+
+<p>   可以发现，嵌套的渲染也是work的</p>
+<h2 id="条件渲染"><a href="#条件渲染" class="headerlink" title="条件渲染"></a>条件渲染</h2><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> React <span class="keyword">from</span> <span class="string">"react"</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; Wrapper, useState &#125; <span class="keyword">from</span> <span class="string">"./my-hooks"</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">App</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> [counter1, setCounter1] = useState(<span class="number">1</span>);</span><br><span class="line">  <span class="keyword">const</span> [counter2, setCounter2] = useState(<span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> (</span><br><span class="line">    &lt;div&gt;</span><br><span class="line">      &lt;p&gt;counter1: &#123;counter1&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter1(counter1 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">      &lt;hr /&gt;</span><br><span class="line">      &lt;p&gt;counter2: &#123;counter2&#125;&lt;<span class="regexp">/p&gt;</span></span><br><span class="line"><span class="regexp">      &lt;button onClick=&#123;() =&gt; setCounter2(counter2 + 1)&#125;&gt;add&lt;/</span>button&gt;</span><br><span class="line">    &lt;<span class="regexp">/div&gt;</span></span><br><span class="line"><span class="regexp">  );</span></span><br><span class="line"><span class="regexp">&#125;</span></span><br><span class="line"><span class="regexp"></span></span><br><span class="line"><span class="regexp">function MainApp() &#123;</span></span><br><span class="line"><span class="regexp">  const [showApp1, setShowApp1] = useState(false);</span></span><br><span class="line"><span class="regexp"></span></span><br><span class="line"><span class="regexp">  return (</span></span><br><span class="line"><span class="regexp">    &lt;div&gt;</span></span><br><span class="line"><span class="regexp">      &lt;h2&gt;App 1&lt;/</span>h2&gt;</span><br><span class="line">      &#123;showApp1 &amp;&amp; <span class="xml"><span class="tag">&lt;<span class="name">App</span> /&gt;</span>&#125;</span></span><br><span class="line"><span class="xml">      <span class="tag">&lt;<span class="name">h2</span>&gt;</span>App 2<span class="tag">&lt;/<span class="name">h2</span>&gt;</span></span></span><br><span class="line"><span class="xml">      <span class="tag">&lt;<span class="name">App</span> /&gt;</span></span></span><br><span class="line"><span class="xml">      <span class="tag">&lt;<span class="name">hr</span> /&gt;</span></span></span><br><span class="line"><span class="xml">      <span class="tag">&lt;<span class="name">button</span> <span class="attr">onClick</span>=<span class="string">&#123;()</span> =&gt;</span> setShowApp1(!showApp1)&#125;&gt;toggle<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span></span><br><span class="line"><span class="xml">    <span class="tag">&lt;/<span class="name">div</span>&gt;</span></span></span><br><span class="line">  );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> Wrapper(MainApp);</span><br></pre></td></tr></table></figure>
+
+<p>CodeSandbox</p>
+<iframe src="https://codesandbox.io/embed/eloquent-cdn-ptzyf?fontsize=14&hidenavigation=1&theme=dark" style="width:100%; height:500px; border:0; border-radius: 4px; overflow:hidden;" title="eloquent-cdn-ptzyf" allow="geolocation; microphone; camera; midi; vr; accelerometer; gyroscope; payment; ambient-light-sensor; encrypted-media; usb" sandbox="allow-modals allow-forms allow-popups allow-scripts allow-same-origin"></iframe>
+
+<p>可以发现，这里出现了串数据的现象。从这里我们可以分析原因，因为不管是任意的平级或者嵌套的组件渲染，都不会改变调用useState的顺序，所以他们总是能够正确得对应上相关的状态。但是条件渲染，则改变了它的顺序，所以出现了串数据的情况。<br>注意到，我们实现的setState是存储在全局的一个链表，也就是说所有组件的状态都共用这一个链表。如果每个组件，都单独占用一个独立的链表，问题就可以解决了。但是，有什么办法才能知道当前渲染的组件对应哪一个链表呢？参考<a href="https://indepth.dev/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react/" target="_blank" rel="noopener">这边文章</a>发现，React Fiber算法正式可以解决这个问题，因为每次执行渲染函数的时候，都能够知道当前函数所对应的组件信息，那么如果我们把setState所需要的链表信息在这里面，每次渲染之前取一下，就可以完美实现了。</p>
+<p>由于React Fiber算法又是一个比较大的主题，这次就不展开了。下次有时间再专门写一篇React Fiber的博客。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/about/">关于</a></li>
+         
+          <li><a href="/archives/">归档</a></li>
+         
+          <li><a href="https://github.com/mutefish0">项目</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#使用Hooks实现一个简单的计数器组件"><span class="toc-number">1.</span> <span class="toc-text">使用Hooks实现一个简单的计数器组件</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#疑问"><span class="toc-number">1.1.</span> <span class="toc-text">疑问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#实现一个模拟的强制刷新"><span class="toc-number">1.2.</span> <span class="toc-text">实现一个模拟的强制刷新</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#实现一个useState"><span class="toc-number">1.3.</span> <span class="toc-text">实现一个useState</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#整理代码"><span class="toc-number">1.4.</span> <span class="toc-text">整理代码</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#多个计数器"><span class="toc-number">2.</span> <span class="toc-text">多个计数器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#先用原生的useState实现"><span class="toc-number">2.1.</span> <span class="toc-text">先用原生的useState实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#尝试用我们造的useState轮子实现"><span class="toc-number">2.2.</span> <span class="toc-text">尝试用我们造的useState轮子实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#渲染多个平级组件"><span class="toc-number">3.</span> <span class="toc-text">渲染多个平级组件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#渲染嵌套的组件"><span class="toc-number">4.</span> <span class="toc-text">渲染嵌套的组件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#条件渲染"><span class="toc-number">5.</span> <span class="toc-text">条件渲染</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/03/29/react-hooks/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://yoursite.com/2020/03/29/react-hooks/&text=React Hooks之useState的原理剖析"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/03/29/react-hooks/&is_video=false&description=React Hooks之useState的原理剖析"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=React Hooks之useState的原理剖析&body=Check out this article: http://yoursite.com/2020/03/29/react-hooks/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://yoursite.com/2020/03/29/react-hooks/&title=React Hooks之useState的原理剖析"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/03/29/react-hooks/&name=React Hooks之useState的原理剖析&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2020 Ivancing
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/about/">关于</a></li>
+         
+          <li><a href="/archives/">归档</a></li>
+         
+          <li><a href="https://github.com/mutefish0">项目</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+    <!-- jquery -->
+<script src="/lib/jquery/jquery.min.js"></script>
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+<!-- clipboard -->
+
+  <script src="/lib/clipboard/clipboard.min.js"></script>
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight .code pre").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      target: function(trigger) {
+        return trigger.nextElementSibling;
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+<script src="/js/main.js"></script>
+<!-- search -->
+
+<!-- Google Analytics -->
+
+    <script type="text/javascript">
+        (function(i,s,o,g,r,a,m) {i['GoogleAnalyticsObject']=r;i[r]=i[r]||function() {
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-146722305-1', 'auto');
+        ga('send', 'pageview');
+    </script>
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>
