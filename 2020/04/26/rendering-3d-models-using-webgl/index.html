@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head><meta name="generator" content="Hexo 3.9.0">
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="description" content=".align-center {     text-align: center;   }   上次写了一篇关于WebGL入门的博客，只简单实现了一些比较基础的东西，比较无趣，这次从实际应用出发，从零实现Web端的3D模型渲染。下面是得物App上的3D商品预览功能，觉得比较有趣，也是因为这个原因催生了写这篇博客的想法。   得物App的3D商品渲染   为什么一定要用WebGL？WebGL是一个">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从零实现Web端的3D模型渲染">
+<meta property="og:url" content="http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/index.html">
+<meta property="og:site_name" content="程一凡">
+<meta property="og:description" content=".align-center {     text-align: center;   }   上次写了一篇关于WebGL入门的博客，只简单实现了一些比较基础的东西，比较无趣，这次从实际应用出发，从零实现Web端的3D模型渲染。下面是得物App上的3D商品预览功能，觉得比较有趣，也是因为这个原因催生了写这篇博客的想法。   得物App的3D商品渲染   为什么一定要用WebGL？WebGL是一个">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/dewu.gif">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/gpu_work.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/shaders.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/coords.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/coords.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/preview1.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/rectangle.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/preview2.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/cube.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/preview2.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/projection_effect.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/projection.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/view.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/model.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/preview4.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/ambient.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/preview5.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/diffuse.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/norm_data.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/preview6.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/reflect.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/preview7.gif">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/uv_mapping.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/model_mesh.png">
+<meta property="og:image" content="http://yoursite.com/images/webgl-3d-model/model.gif">
+<meta property="og:updated_time" content="2020-04-26T19:02:21.967Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="从零实现Web端的3D模型渲染">
+<meta name="twitter:description" content=".align-center {     text-align: center;   }   上次写了一篇关于WebGL入门的博客，只简单实现了一些比较基础的东西，比较无趣，这次从实际应用出发，从零实现Web端的3D模型渲染。下面是得物App上的3D商品预览功能，觉得比较有趣，也是因为这个原因催生了写这篇博客的想法。   得物App的3D商品渲染   为什么一定要用WebGL？WebGL是一个">
+<meta name="twitter:image" content="http://yoursite.com/images/webgl-3d-model/dewu.gif">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>从零实现Web端的3D模型渲染</title>
+    <!-- styles -->
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- persian styles -->
+    
+      <link rel="stylesheet" href="/css/rtl.css">
+    
+    <!-- rss -->
+    
+    
+</head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/about/">关于</a></li>
+         
+          <li><a href="/archives/">归档</a></li>
+         
+          <li><a href="https://github.com/mutefish0">项目</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" href="/2020/03/29/react-hooks/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&text=从零实现Web端的3D模型渲染"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&is_video=false&description=从零实现Web端的3D模型渲染"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=从零实现Web端的3D模型渲染&body=Check out this article: http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&name=从零实现Web端的3D模型渲染&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#为什么一定要用WebGL？"><span class="toc-number">1.</span> <span class="toc-text">为什么一定要用WebGL？</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#为什么说WebGL能够操纵显卡？"><span class="toc-number">2.</span> <span class="toc-text">为什么说WebGL能够操纵显卡？</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#着色器"><span class="toc-number">3.</span> <span class="toc-text">着色器</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#着色器入门"><span class="toc-number">4.</span> <span class="toc-text">着色器入门</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Hello-World"><span class="toc-number">4.1.</span> <span class="toc-text">Hello World</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#准备顶点数据"><span class="toc-number">4.1.1.</span> <span class="toc-text">准备顶点数据</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#编写顶点着色器"><span class="toc-number">4.1.2.</span> <span class="toc-text">编写顶点着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#编写片段着色器"><span class="toc-number">4.1.3.</span> <span class="toc-text">编写片段着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#结果"><span class="toc-number">4.1.4.</span> <span class="toc-text">结果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#画一个正方形"><span class="toc-number">4.2.</span> <span class="toc-text">画一个正方形</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#顶点数据"><span class="toc-number">4.2.1.</span> <span class="toc-text">顶点数据</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#结果-1"><span class="toc-number">4.2.2.</span> <span class="toc-text">结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#画一个立方体"><span class="toc-number">4.2.3.</span> <span class="toc-text">画一个立方体</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#结果-2"><span class="toc-number">4.2.4.</span> <span class="toc-text">结果</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#如何绘制立体图形？"><span class="toc-number">5.</span> <span class="toc-text">如何绘制立体图形？</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#空间变换"><span class="toc-number">6.</span> <span class="toc-text">空间变换</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#透视效应"><span class="toc-number">6.1.</span> <span class="toc-text">透视效应</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#投影矩阵"><span class="toc-number">6.2.</span> <span class="toc-text">投影矩阵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#观察矩阵"><span class="toc-number">6.3.</span> <span class="toc-text">观察矩阵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#模型矩阵"><span class="toc-number">6.4.</span> <span class="toc-text">模型矩阵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#修改顶点着色器"><span class="toc-number">6.5.</span> <span class="toc-text">修改顶点着色器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#效果如下"><span class="toc-number">6.6.</span> <span class="toc-text">效果如下</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#光照"><span class="toc-number">7.</span> <span class="toc-text">光照</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#环境光照（Ambient）"><span class="toc-number">7.1.</span> <span class="toc-text">环境光照（Ambient）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#修改片段着色器"><span class="toc-number">7.1.1.</span> <span class="toc-text">修改片段着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#效果"><span class="toc-number">7.1.2.</span> <span class="toc-text">效果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#漫反射（Diffuse）"><span class="toc-number">7.2.</span> <span class="toc-text">漫反射（Diffuse）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#修改顶点着色器-1"><span class="toc-number">7.2.1.</span> <span class="toc-text">修改顶点着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#修改片段着色器-1"><span class="toc-number">7.2.2.</span> <span class="toc-text">修改片段着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#结果-3"><span class="toc-number">7.2.3.</span> <span class="toc-text">结果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#镜面反射（Specular）"><span class="toc-number">7.3.</span> <span class="toc-text">镜面反射（Specular）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#修改片段着色器代码"><span class="toc-number">7.3.1.</span> <span class="toc-text">修改片段着色器代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#效果-1"><span class="toc-number">7.3.2.</span> <span class="toc-text">效果</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3D模型渲染"><span class="toc-number">8.</span> <span class="toc-text">3D模型渲染</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#UV-Mapping"><span class="toc-number">8.1.</span> <span class="toc-text">UV Mapping</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Mesh"><span class="toc-number">8.2.</span> <span class="toc-text">Mesh</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#模型加载"><span class="toc-number">8.3.</span> <span class="toc-text">模型加载</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#最终效果"><span class="toc-number">8.4.</span> <span class="toc-text">最终效果</span></a></li></ol></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        从零实现Web端的3D模型渲染
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">程一凡</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2020-04-26T11:34:24.000Z" itemprop="datePublished">2020-04-26</time>
+        
+      
+    </div>
+
+
+      
+
+      
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <style>
+  .align-center {
+    text-align: center;
+  }
+</style>
+
+<p>上次写了一篇关于WebGL入门的博客，只简单实现了一些比较基础的东西，比较无趣，这次从实际应用出发，从零实现Web端的3D模型渲染。下面是得物App上的3D商品预览功能，觉得比较有趣，也是因为这个原因催生了写这篇博客的想法。</p>
+<img width="240" src="/images/webgl-3d-model/dewu.gif">
+<p class="align-center">
+<i>得物App的3D商品渲染</i>
+</p>
+
+<h1 id="为什么一定要用WebGL？"><a href="#为什么一定要用WebGL？" class="headerlink" title="为什么一定要用WebGL？"></a>为什么一定要用WebGL？</h1><p>WebGL是一个Javascript API，用来渲染交互式的2D和3D图形。放眼其他技术，不管是DOM操作API、又或者是Canvas画布API，都是通过调用浏览器API，让浏览器来帮你进行渲染的。唯独WebGL可以让你手动操纵显卡，来决定如何进行渲染。为了能够实现逼真的3D渲染效果，这个能力至关重要。</p>
+<h1 id="为什么说WebGL能够操纵显卡？"><a href="#为什么说WebGL能够操纵显卡？" class="headerlink" title="为什么说WebGL能够操纵显卡？"></a>为什么说WebGL能够操纵显卡？</h1><p>为了解释这个问题，我们先看看GPU是如何工作的，下面这张图展示了一帧画面，从数据准备，到经过显卡程序处理，最后渲染到屏幕的过程。</p>
+<p><img src="/images/webgl-3d-model/gpu_work.png" alt></p>
+<p>可以看到，一帧画面，其实是一批数据，经过显卡程序处理，最后渲染到屏幕上。可以看到，如果能够操纵数据和显卡程序，则我们操纵了显卡。WebGL正好提供了这些API。</p>
+<h1 id="着色器"><a href="#着色器" class="headerlink" title="着色器"></a>着色器</h1><p>实际上，所谓的“显卡渲染程序”有个正式名称：<strong>着色器</strong>，它是由GLSL ES（OpenGL ES Shading Language）语言编写的程序。利用着色器可以实现非常强大的功能，各种游戏特效、影视特效，其底层其实就是着色器代码。可以说着色器是显卡的灵魂。</p>
+<p>每个渲染程序都至少需要包含两个最常用的部分：<strong>顶点着色器（Vertex Shader）</strong>和<strong>片段着色器（Fragment Shader）</strong>，还有可选的<strong>几何着色器(Geometry Shader)</strong>，这篇博客只涉及到了顶点着色器和片段着色器。</p>
+<p>下图展示了顶点着色器和片段着色器的分工：<br><img src="/images/webgl-3d-model/shaders.png" alt></p>
+<p>顶点着色器负责生成<strong>屏幕坐标</strong>点，片段着色器则负责生成颜色值，最终形成了屏幕上的一个像素点。</p>
+<p>所谓的“屏幕坐标”，具体指的是<strong>标准化设备坐标（Normalize Device Coordinate）</strong>。如下图所示，以屏幕中心为原点，从左到由为X轴，从下到上为Y轴，从屏幕中心指向你自己为Z轴。特点如下：</p>
+<ol>
+<li>坐标范围为[-1, 1]，超出范围则不会被渲染</li>
+<li>绘制像素点只需要用到X和Y轴，Z轴可用于<strong>深度缓冲（Z－buffering）</strong></li>
+</ol>
+<p><img src="/images/webgl-3d-model/coords.png" alt></p>
+<h1 id="着色器入门"><a href="#着色器入门" class="headerlink" title="着色器入门"></a>着色器入门</h1><p>下面介绍着色器程序的基本用法，实现非常简单的图形绘制。这些示例虽然简单无趣，但是掌握了这些，等于你掌握了80%的着色器知识。实际上你能想象到的各种逼真、炫酷的效果，都是通过这些基础用法组而成的。</p>
+<h2 id="Hello-World"><a href="#Hello-World" class="headerlink" title="Hello World"></a>Hello World</h2><p>学习任何一门语言的时候，入门程序就是跑通“Hello World”程序。在计算机图形领域，入门程序是绘制一个三角形。我们输入3个顶点数据，直接输出为屏幕坐标，颜色固定为绿色。</p>
+<h3 id="准备顶点数据"><a href="#准备顶点数据" class="headerlink" title="准备顶点数据"></a>准备顶点数据</h3><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> data = [</span><br><span class="line">  <span class="number">0</span>, <span class="number">0.5</span>, <span class="number">0</span>,</span><br><span class="line">  <span class="number">-0.5</span>, <span class="number">0</span>, <span class="number">0</span>,</span><br><span class="line">  <span class="number">0.5</span>, <span class="number">0</span>, <span class="number">0</span></span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+
+<p>如图所示<br><img src="/images/webgl-3d-model/coords.png" alt></p>
+<h3 id="编写顶点着色器"><a href="#编写顶点着色器" class="headerlink" title="编写顶点着色器"></a>编写顶点着色器</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 声明版本</span></span><br><span class="line"><span class="meta">#version 300 es</span></span><br><span class="line"><span class="keyword">in</span> <span class="type">vec3</span> a_Pos; <span class="comment">// 取一个输入顶点数据</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123; </span><br><span class="line">  <span class="comment">// 直接输出</span></span><br><span class="line">  <span class="built_in">gl_Position</span> = <span class="type">vec4</span>(a_Pos, <span class="number">1.0</span>); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="编写片段着色器"><a href="#编写片段着色器" class="headerlink" title="编写片段着色器"></a>编写片段着色器</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 300 es</span></span><br><span class="line"><span class="keyword">out</span> <span class="keyword">mediump</span> <span class="type">vec4</span> fragColor;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">  <span class="comment">// 输出纯绿色，完全不透明</span></span><br><span class="line">  fragColor = <span class="type">vec4</span>(<span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="结果"><a href="#结果" class="headerlink" title="结果"></a>结果</h3><p><img src="/images/webgl-3d-model/preview1.png" alt></p>
+<h2 id="画一个正方形"><a href="#画一个正方形" class="headerlink" title="画一个正方形"></a>画一个正方形</h2><p>显然，画一个正方形等于画两个三角形。</p>
+<h3 id="顶点数据"><a href="#顶点数据" class="headerlink" title="顶点数据"></a>顶点数据</h3><p>我们修改顶点数据即可：<br><img src="/images/webgl-3d-model/rectangle.png" alt></p>
+<h3 id="结果-1"><a href="#结果-1" class="headerlink" title="结果"></a>结果</h3><p><img src="/images/webgl-3d-model/preview2.png" alt></p>
+<h3 id="画一个立方体"><a href="#画一个立方体" class="headerlink" title="画一个立方体"></a>画一个立方体</h3><p>同样的道理，分别会在六个面，每个面绘制两个三角形。<br><img src="/images/webgl-3d-model/cube.png" alt></p>
+<h3 id="结果-2"><a href="#结果-2" class="headerlink" title="结果"></a>结果</h3><p><img src="/images/webgl-3d-model/preview2.png" alt></p>
+<p>并没有看出是一个立方体，结果还是还是一个正方形。回顾一下前面提到的，绘制屏幕坐标的时候，只用了X, Y两个轴，Z轴并没有用到的。那么如何才能绘制出3D图形呢？下一节给出答案。</p>
+<h1 id="如何绘制立体图形？"><a href="#如何绘制立体图形？" class="headerlink" title="如何绘制立体图形？"></a>如何绘制立体图形？</h1><p>说出来可能有些失望，WebGL或者显卡程序并没有提供能够绘制3D图形的API，并且它也不是被设计用来做这个事情的。</p>
+<p>对于如何表现立体物体，我们可以从素描中得到启示：</p>
+<ul>
+<li>透视画法，将立体坐标映射到平面上</li>
+<li>画阴影，将不同的表面区分开来 </li>
+</ul>
+<p>计算机图像学中分别由这两种算法实现：</p>
+<ul>
+<li>空间变换算法</li>
+<li>光照算法</li>
+</ul>
+<p>我们可以得出结论，表现立体物体，实际是靠算法实现的。稍后的内容将会一步一步编码实现这两种算法。</p>
+<p>理论上你可以开发出一个Javascript库，实现一套完整的算法，在Canvas上控制每一个像素点的绘制，最终也能实现和WebGL一样的效果。但是，第一，不太现实，这样相当于自己实现了一个OpenGL库。第二，性能很差，这些算法里面涉及到大量的矩阵运算，而CPU不擅长做这些运算，GPU则天生就擅长做这些运算。</p>
+<h1 id="空间变换"><a href="#空间变换" class="headerlink" title="空间变换"></a>空间变换</h1><p>我们通过矩阵乘法运算来实现空间变换。还是以素描打比方，我们可以实现轻松”透视画法“，不仅如此，我们还可以实现：</p>
+<ul>
+<li>随意改变观察的视角和位置（额外发现的宝藏）</li>
+<li>随意改变物体的位置、方位、大小（额外发现的宝藏）</li>
+</ul>
+<h2 id="透视效应"><a href="#透视效应" class="headerlink" title="透视效应"></a>透视效应</h2><p>在生活中可以观察到，照片或者素描作品中，越近的东西越大，越远的东西则越小。越正对着的面越大，顶点的夹角变化越小，越侧对着的面越小，顶点的夹角变化越大。</p>
+<p><img src="/images/webgl-3d-model/projection_effect.png" alt></p>
+<p>这个效应称之为<strong>透视（Perspective）效应</strong>。在数学上有一种运算叫<strong>透视投影</strong>，专门模拟这种效果，它实际上是利用了摄像机或者人眼成像的原理。</p>
+<h2 id="投影矩阵"><a href="#投影矩阵" class="headerlink" title="投影矩阵"></a>投影矩阵</h2><p>如下图所示，我们有一个摄像机，可以通过平截头体（金字塔削掉顶部）定义它的参数。Near是<strong>近平面</strong>，Far是<strong>远平面</strong>，fov是<strong>视场（field of view）</strong>，aspectRatio是宽高比。平截头体有如下特点：</p>
+<ul>
+<li>只有平截头体内的点可以看到，超出则会被裁剪</li>
+<li>平截头体空间内的任意一点都会被投影到近平面</li>
+<li>近平面上的点将会被成像到电脑屏幕或者摄像机屏幕上<br><img src="/images/webgl-3d-model/projection.png" alt></li>
+</ul>
+<p>通过这四个参数可以得到一个透视投影矩阵，将空间坐标乘以这个矩阵后可以得到屏幕坐标</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> f = <span class="number">1.0</span> / <span class="built_in">Math</span>.tan(((fov / <span class="number">180</span>) * <span class="built_in">Math</span>.PI) / <span class="number">2</span>);</span><br><span class="line"><span class="keyword">const</span> rangeInv = <span class="number">1</span> / (near - far);</span><br><span class="line"><span class="keyword">const</span> projectionMatrinx = [</span><br><span class="line">  f / aspectRatio, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>,</span><br><span class="line">  <span class="number">0</span>, f, <span class="number">0</span>, <span class="number">0</span>,</span><br><span class="line">  <span class="number">0</span>, <span class="number">0</span>, (near + far) * rangeInv, <span class="number">-1</span>,</span><br><span class="line">  <span class="number">0</span>, <span class="number">0</span>, near * far * rangeInv * <span class="number">2</span>, <span class="number">0</span></span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+
+<h2 id="观察矩阵"><a href="#观察矩阵" class="headerlink" title="观察矩阵"></a>观察矩阵</h2><p>如图所示：通过定义观察矩阵，我们可以变换摄像机的位置和方位<br><img src="/images/webgl-3d-model/view.png" alt></p>
+<h2 id="模型矩阵"><a href="#模型矩阵" class="headerlink" title="模型矩阵"></a>模型矩阵</h2><p>如图所示：通过定义模型矩阵，我们可以变换物体的位置、方位、大小<br><img src="/images/webgl-3d-model/model.png" alt></p>
+<h2 id="修改顶点着色器"><a href="#修改顶点着色器" class="headerlink" title="修改顶点着色器"></a>修改顶点着色器</h2><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 300 es</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">in</span> <span class="type">vec3</span> a_Pos;</span><br><span class="line"></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">mat4</span> projection; <span class="comment">// 接收投影矩阵</span></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">mat4</span> model; <span class="comment">// 接收模型矩阵</span></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">mat4</span> view; <span class="comment">// 接收观察矩阵</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">  <span class="comment">// 通过矩阵乘法，最终将空间物体坐标变换到屏幕坐标</span></span><br><span class="line">  <span class="built_in">gl_Position</span> = projection * view * model * <span class="type">vec4</span>(a_Pos, <span class="number">1.0</span>); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="效果如下"><a href="#效果如下" class="headerlink" title="效果如下"></a>效果如下</h2><p>可以看出有一定立体效果了<br><img src="/images/webgl-3d-model/preview4.png" alt></p>
+<h1 id="光照"><a href="#光照" class="headerlink" title="光照"></a>光照</h1><p>光照也是通过数学运算实现的。还是以素描打比方，我们可以轻松实现”画阴影“，不仅如此，我们还可以实现：</p>
+<ul>
+<li>模拟环境光照（月亮等）</li>
+<li>模拟反光效应</li>
+<li>通过在任意足够小的局部，定义3种光照的叠加参数，从而逼真地模拟任意材质的物体</li>
+</ul>
+<h2 id="环境光照（Ambient）"><a href="#环境光照（Ambient）" class="headerlink" title="环境光照（Ambient）"></a>环境光照（Ambient）</h2><p>理论上，如果没有光，我们看到的物体的颜色是完全黑的。生活中，一般总会存在一些光，比如太阳、月亮产生的光。我们模拟这样的效果，称为环境光照。<br><img src="/images/webgl-3d-model/ambient.png" alt></p>
+<h3 id="修改片段着色器"><a href="#修改片段着色器" class="headerlink" title="修改片段着色器"></a>修改片段着色器</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 300 es</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">out</span> <span class="keyword">mediump</span> <span class="type">vec4</span> fragColor;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> lightColor = <span class="type">vec3</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>);</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> ambient = lightColor * <span class="number">0.1</span>; <span class="comment">// 取白光强度的0.1为环境光照</span></span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> object = <span class="type">vec3</span>(<span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line">  fragColor = <span class="type">vec4</span>(ambient * object, <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="效果"><a href="#效果" class="headerlink" title="效果"></a>效果</h3><p><img src="/images/webgl-3d-model/preview5.png" alt></p>
+<h2 id="漫反射（Diffuse）"><a href="#漫反射（Diffuse）" class="headerlink" title="漫反射（Diffuse）"></a>漫反射（Diffuse）</h2><p>现实中，光对一个物体的不同表面产生的影响是不同的</p>
+<ul>
+<li>正对着光看起来更亮</li>
+<li>背对着光看起来更暗<br>使用漫反射可以很好地模拟这种效果</li>
+</ul>
+<p><img src="/images/webgl-3d-model/diffuse.png" alt></p>
+<p>算法里面引入了定点的法向量。我们需要修改顶点数据，除了坐标外，我们需要加上对应的法向量。</p>
+<p><img src="/images/webgl-3d-model/norm_data.png" alt></p>
+<h3 id="修改顶点着色器-1"><a href="#修改顶点着色器-1" class="headerlink" title="修改顶点着色器"></a>修改顶点着色器</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 300 es</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">in</span> <span class="type">vec3</span> a_Pos;</span><br><span class="line"><span class="keyword">in</span> <span class="type">vec3</span> a_Norm; <span class="comment">// 接受法向量</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">mat4</span> projection;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">mat4</span> model;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">mat4</span> view;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 将经过模型变换后的坐标传给片段着色器</span></span><br><span class="line"><span class="keyword">out</span> <span class="keyword">highp</span> <span class="type">vec3</span> f_Pos;</span><br><span class="line"><span class="comment">// 将经过模型变换后的法向量传给片段着色器</span></span><br><span class="line"><span class="keyword">out</span> <span class="keyword">highp</span> <span class="type">vec3</span> f_Norm;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">  <span class="comment">// 计算物体经过模型变换后的坐标</span></span><br><span class="line">  f_Pos = <span class="type">vec3</span>(model * <span class="type">vec4</span>(a_Pos, <span class="number">1.0</span>));</span><br><span class="line">  <span class="comment">// 计算经过模型变换后的法向量</span></span><br><span class="line">  f_Norm = <span class="type">mat3</span>(<span class="built_in">transpose</span>(<span class="built_in">inverse</span>(model))) * a_Norm;</span><br><span class="line">  <span class="built_in">gl_Position</span> = projection * view * model * <span class="type">vec4</span>(a_Pos, <span class="number">1.0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="修改片段着色器-1"><a href="#修改片段着色器-1" class="headerlink" title="修改片段着色器"></a>修改片段着色器</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 300 es</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">in</span> <span class="keyword">highp</span> <span class="type">vec3</span> f_Pos;</span><br><span class="line"><span class="keyword">in</span> <span class="keyword">highp</span> <span class="type">vec3</span> f_Norm;</span><br><span class="line"></span><br><span class="line"><span class="keyword">out</span> <span class="keyword">mediump</span> <span class="type">vec4</span> fragColor;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> lightColor = <span class="type">vec3</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>);</span><br><span class="line">  <span class="keyword">highp</span> <span class="type">vec3</span> lightPos = <span class="type">vec3</span>(<span class="number">0</span>, <span class="number">0.5</span>, <span class="number">100</span>); <span class="comment">// 灯的位置</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> ambient = lightColor * <span class="number">0.1</span>; <span class="comment">// 取白光强度的0.1为环境光照</span></span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> object = <span class="type">vec3</span>(<span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> n = <span class="built_in">normalize</span>(f_Norm);</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> l = <span class="built_in">normalize</span>(lightPos - f_Pos);</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">float</span> cosTheta = <span class="built_in">max</span>(<span class="built_in">dot</span>(n, l), <span class="number">0.0</span>);</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> diffuse = cosTheta * lightColor * object;</span><br><span class="line"></span><br><span class="line">  fragColor = <span class="type">vec4</span>(ambient * object + diffuse, <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="结果-3"><a href="#结果-3" class="headerlink" title="结果"></a>结果</h3><p>如下图，立体效果已经非常明显了</p>
+<p><img src="/images/webgl-3d-model/preview6.png" alt></p>
+<h2 id="镜面反射（Specular）"><a href="#镜面反射（Specular）" class="headerlink" title="镜面反射（Specular）"></a>镜面反射（Specular）</h2><p>现实中，有的物体表面会反射光，有的则不会，这和物体表面的光滑程度和反光程度有关。<strong>镜面反射</strong>用来模拟这种效果。</p>
+<p><img src="/images/webgl-3d-model/reflect.png" alt></p>
+<h3 id="修改片段着色器代码"><a href="#修改片段着色器代码" class="headerlink" title="修改片段着色器代码"></a>修改片段着色器代码</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 300 es</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">in</span> <span class="keyword">highp</span> <span class="type">vec3</span> f_Pos;</span><br><span class="line"><span class="keyword">in</span> <span class="keyword">highp</span> <span class="type">vec3</span> f_Norm;</span><br><span class="line"></span><br><span class="line"><span class="keyword">out</span> <span class="keyword">mediump</span> <span class="type">vec4</span> fragColor;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> lightColor = <span class="type">vec3</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>);</span><br><span class="line">  <span class="keyword">highp</span> <span class="type">vec3</span> lightPos = <span class="type">vec3</span>(<span class="number">0</span>, <span class="number">0.5</span>, <span class="number">100</span>);</span><br><span class="line">  <span class="keyword">highp</span> <span class="type">vec3</span> viewPos = <span class="type">vec3</span>(<span class="number">0</span>, <span class="number">-0.5</span>, <span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> ambient = lightColor * <span class="number">0.1</span>; <span class="comment">// 取白光强度的0.1为环境光照</span></span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> object = <span class="type">vec3</span>(<span class="number">0.2</span>, <span class="number">0.8</span>, <span class="number">0.2</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> n = <span class="built_in">normalize</span>(f_Norm);</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> l = <span class="built_in">normalize</span>(lightPos - f_Pos);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">float</span> cosTheta = <span class="built_in">max</span>(<span class="built_in">dot</span>(n, l), <span class="number">0.0</span>);</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> diffuse = cosTheta * lightColor * object;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// specular</span></span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">float</span> Ns = <span class="number">500.0</span>;</span><br><span class="line">  <span class="keyword">highp</span> <span class="type">vec3</span> v = <span class="built_in">normalize</span>(viewPos - f_Pos);</span><br><span class="line">  <span class="keyword">highp</span> <span class="type">vec3</span> r = <span class="built_in">reflect</span>(-l, f_Norm);</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">float</span> spec = <span class="built_in">pow</span>(<span class="built_in">max</span>(<span class="built_in">dot</span>(v, r), <span class="number">0.0</span>), Ns);</span><br><span class="line">  <span class="keyword">mediump</span> <span class="type">vec3</span> specular = spec * lightColor * object;</span><br><span class="line"></span><br><span class="line">  fragColor = <span class="type">vec4</span>(ambient * object + diffuse + specular, <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="效果-1"><a href="#效果-1" class="headerlink" title="效果"></a>效果</h3><p>基本上通过这三种光照参数的叠加，我们可以模拟任意的一种材质<br><img src="/images/webgl-3d-model/preview7.gif" alt></p>
+<h1 id="3D模型渲染"><a href="#3D模型渲染" class="headerlink" title="3D模型渲染"></a>3D模型渲染</h1><p>至此我们已经解决了立体感的问题。但是到目前为止似乎还是感觉有些单调。主要有两点：</p>
+<ul>
+<li>整个物体都表现出一种材质，现实中一个物体往往有多种材质组成</li>
+<li>除了立方体还是立方体，现实中往往是各种复杂的形状，比如人体</li>
+</ul>
+<p>这两个问题分别由这两种技术解决：<strong>材质贴图（UV Mapping）</strong>和<strong>网格（Mesh）</strong></p>
+<h2 id="UV-Mapping"><a href="#UV-Mapping" class="headerlink" title="UV Mapping"></a>UV Mapping</h2><p>与每个顶点都使用同样一个物体颜色相反，转而使用着色器提供了采样器函数，从一个指定的图片中，为每个顶点采样一个颜色。</p>
+<p>同样地，与每个顶点使用同样一个反射强度相反，从一个指定的灰度图片中，为每个顶点采样一个颜色作为反射强度</p>
+<p>甚至，顶点的法向量也可以从图片中进行采样，r，g, b分量则分别代表x, y, z。<br><img src="/images/webgl-3d-model/uv_mapping.png" alt></p>
+<h2 id="Mesh"><a href="#Mesh" class="headerlink" title="Mesh"></a>Mesh</h2><p>如下图所示，其实不管多复杂的模型，其实都是由三角形组成的（3D设计软件自动生成），只是顶点变多了而已，把前面的技术应用到每一个三角形上面，就可以表示非常逼真的模型了。<br><img width="300" src="/images/webgl-3d-model/model_mesh.png"> </p>
+<h2 id="模型加载"><a href="#模型加载" class="headerlink" title="模型加载"></a>模型加载</h2><p>模型一般是一个文件，里面包含顶点信息（Mesh），材质映射等数据 。对于3D模型文件，市面上有多种文件格式。我们这次使用obj格式。<br>根据规范，编写了解析函数。最终解析出顶点信息和材质信息。<br><a href="https://github.com/Mutefish0/webgl-advanced/blob/master/src/model.ts#L5" target="_blank" rel="noopener">源代码</a></p>
+<h2 id="最终效果"><a href="#最终效果" class="headerlink" title="最终效果"></a>最终效果</h2><p><img src="/images/webgl-3d-model/model.gif" alt><br>完整代码在 <a href="https://github.com/Mutefish0/webgl-advanced" target="_blank" rel="noopener">Github</a>，欢迎Star。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/about/">关于</a></li>
+         
+          <li><a href="/archives/">归档</a></li>
+         
+          <li><a href="https://github.com/mutefish0">项目</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#为什么一定要用WebGL？"><span class="toc-number">1.</span> <span class="toc-text">为什么一定要用WebGL？</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#为什么说WebGL能够操纵显卡？"><span class="toc-number">2.</span> <span class="toc-text">为什么说WebGL能够操纵显卡？</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#着色器"><span class="toc-number">3.</span> <span class="toc-text">着色器</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#着色器入门"><span class="toc-number">4.</span> <span class="toc-text">着色器入门</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Hello-World"><span class="toc-number">4.1.</span> <span class="toc-text">Hello World</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#准备顶点数据"><span class="toc-number">4.1.1.</span> <span class="toc-text">准备顶点数据</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#编写顶点着色器"><span class="toc-number">4.1.2.</span> <span class="toc-text">编写顶点着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#编写片段着色器"><span class="toc-number">4.1.3.</span> <span class="toc-text">编写片段着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#结果"><span class="toc-number">4.1.4.</span> <span class="toc-text">结果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#画一个正方形"><span class="toc-number">4.2.</span> <span class="toc-text">画一个正方形</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#顶点数据"><span class="toc-number">4.2.1.</span> <span class="toc-text">顶点数据</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#结果-1"><span class="toc-number">4.2.2.</span> <span class="toc-text">结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#画一个立方体"><span class="toc-number">4.2.3.</span> <span class="toc-text">画一个立方体</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#结果-2"><span class="toc-number">4.2.4.</span> <span class="toc-text">结果</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#如何绘制立体图形？"><span class="toc-number">5.</span> <span class="toc-text">如何绘制立体图形？</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#空间变换"><span class="toc-number">6.</span> <span class="toc-text">空间变换</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#透视效应"><span class="toc-number">6.1.</span> <span class="toc-text">透视效应</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#投影矩阵"><span class="toc-number">6.2.</span> <span class="toc-text">投影矩阵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#观察矩阵"><span class="toc-number">6.3.</span> <span class="toc-text">观察矩阵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#模型矩阵"><span class="toc-number">6.4.</span> <span class="toc-text">模型矩阵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#修改顶点着色器"><span class="toc-number">6.5.</span> <span class="toc-text">修改顶点着色器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#效果如下"><span class="toc-number">6.6.</span> <span class="toc-text">效果如下</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#光照"><span class="toc-number">7.</span> <span class="toc-text">光照</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#环境光照（Ambient）"><span class="toc-number">7.1.</span> <span class="toc-text">环境光照（Ambient）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#修改片段着色器"><span class="toc-number">7.1.1.</span> <span class="toc-text">修改片段着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#效果"><span class="toc-number">7.1.2.</span> <span class="toc-text">效果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#漫反射（Diffuse）"><span class="toc-number">7.2.</span> <span class="toc-text">漫反射（Diffuse）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#修改顶点着色器-1"><span class="toc-number">7.2.1.</span> <span class="toc-text">修改顶点着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#修改片段着色器-1"><span class="toc-number">7.2.2.</span> <span class="toc-text">修改片段着色器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#结果-3"><span class="toc-number">7.2.3.</span> <span class="toc-text">结果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#镜面反射（Specular）"><span class="toc-number">7.3.</span> <span class="toc-text">镜面反射（Specular）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#修改片段着色器代码"><span class="toc-number">7.3.1.</span> <span class="toc-text">修改片段着色器代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#效果-1"><span class="toc-number">7.3.2.</span> <span class="toc-text">效果</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3D模型渲染"><span class="toc-number">8.</span> <span class="toc-text">3D模型渲染</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#UV-Mapping"><span class="toc-number">8.1.</span> <span class="toc-text">UV Mapping</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Mesh"><span class="toc-number">8.2.</span> <span class="toc-text">Mesh</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#模型加载"><span class="toc-number">8.3.</span> <span class="toc-text">模型加载</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#最终效果"><span class="toc-number">8.4.</span> <span class="toc-text">最终效果</span></a></li></ol></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&text=从零实现Web端的3D模型渲染"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&is_video=false&description=从零实现Web端的3D模型渲染"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=从零实现Web端的3D模型渲染&body=Check out this article: http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&title=从零实现Web端的3D模型渲染"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/04/26/rendering-3d-models-using-webgl/&name=从零实现Web端的3D模型渲染&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2020 Ivancing
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/about/">关于</a></li>
+         
+          <li><a href="/archives/">归档</a></li>
+         
+          <li><a href="https://github.com/mutefish0">项目</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+    <!-- jquery -->
+<script src="/lib/jquery/jquery.min.js"></script>
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+<!-- clipboard -->
+
+  <script src="/lib/clipboard/clipboard.min.js"></script>
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight .code pre").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      target: function(trigger) {
+        return trigger.nextElementSibling;
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+<script src="/js/main.js"></script>
+<!-- search -->
+
+<!-- Google Analytics -->
+
+    <script type="text/javascript">
+        (function(i,s,o,g,r,a,m) {i['GoogleAnalyticsObject']=r;i[r]=i[r]||function() {
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-146722305-1', 'auto');
+        ga('send', 'pageview');
+    </script>
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>
