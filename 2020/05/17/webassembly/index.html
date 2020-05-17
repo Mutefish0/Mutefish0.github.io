@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head><meta name="generator" content="Hexo 3.9.0">
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="description" content=".align-center {     text-align: center;   }   上一篇博客写的是使用WebGL渲染3D模型，当时遇到一个问题没解决。那就是模型解析速度太慢。对于有40万个顶点，2M大小的 Wavefront .obj 文件，需要30多秒完成解析。关键是，40万个顶点还算是中小型的模型，所以这个速度不能接受。解决浏览器计算的性能问题，首先想到的就是最近非常流行的We">
+<meta property="og:type" content="article">
+<meta property="og:title" content="利用WebAssembly实现50倍性能提升">
+<meta property="og:url" content="http://yoursite.com/2020/05/17/webassembly/index.html">
+<meta property="og:site_name" content="程一凡">
+<meta property="og:description" content=".align-center {     text-align: center;   }   上一篇博客写的是使用WebGL渲染3D模型，当时遇到一个问题没解决。那就是模型解析速度太慢。对于有40万个顶点，2M大小的 Wavefront .obj 文件，需要30多秒完成解析。关键是，40万个顶点还算是中小型的模型，所以这个速度不能接受。解决浏览器计算的性能问题，首先想到的就是最近非常流行的We">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/images/wasm/js_cost.png">
+<meta property="og:image" content="http://yoursite.com/images/wasm/wasm_cost.png">
+<meta property="og:image" content="http://yoursite.com/images/wasm/overview.png">
+<meta property="og:image" content="http://yoursite.com/images/wasm/stack.gif">
+<meta property="og:updated_time" content="2020-05-17T16:50:18.977Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="利用WebAssembly实现50倍性能提升">
+<meta name="twitter:description" content=".align-center {     text-align: center;   }   上一篇博客写的是使用WebGL渲染3D模型，当时遇到一个问题没解决。那就是模型解析速度太慢。对于有40万个顶点，2M大小的 Wavefront .obj 文件，需要30多秒完成解析。关键是，40万个顶点还算是中小型的模型，所以这个速度不能接受。解决浏览器计算的性能问题，首先想到的就是最近非常流行的We">
+<meta name="twitter:image" content="http://yoursite.com/images/wasm/js_cost.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>利用WebAssembly实现50倍性能提升</title>
+    <!-- styles -->
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- persian styles -->
+    
+      <link rel="stylesheet" href="/css/rtl.css">
+    
+    <!-- rss -->
+    
+    
+</head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/about/">关于</a></li>
+         
+          <li><a href="/archives/">归档</a></li>
+         
+          <li><a href="https://github.com/mutefish0">项目</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" href="/2020/04/26/rendering-3d-models-using-webgl/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/05/17/webassembly/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://yoursite.com/2020/05/17/webassembly/&text=利用WebAssembly实现50倍性能提升"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/05/17/webassembly/&is_video=false&description=利用WebAssembly实现50倍性能提升"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=利用WebAssembly实现50倍性能提升&body=Check out this article: http://yoursite.com/2020/05/17/webassembly/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/05/17/webassembly/&name=利用WebAssembly实现50倍性能提升&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#如何实现的？"><span class="toc-number">1.</span> <span class="toc-text">如何实现的？</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#WebAssembly-介绍"><span class="toc-number">2.</span> <span class="toc-text">WebAssembly 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#安装Wabt"><span class="toc-number">2.1.</span> <span class="toc-text">安装Wabt</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#在浏览器的实践"><span class="toc-number">2.2.</span> <span class="toc-text">在浏览器的实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#从Javascript执行Wasm函数"><span class="toc-number">2.2.1.</span> <span class="toc-text">从Javascript执行Wasm函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#从Wasm中执行Javascript函数"><span class="toc-number">2.2.2.</span> <span class="toc-text">从Wasm中执行Javascript函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#共享内存"><span class="toc-number">2.2.3.</span> <span class="toc-text">共享内存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#从Wasm导出内存"><span class="toc-number">2.2.4.</span> <span class="toc-text">从Wasm导出内存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#导入外部内存到Wasm"><span class="toc-number">2.2.5.</span> <span class="toc-text">导入外部内存到Wasm</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Emscript-介绍"><span class="toc-number">3.</span> <span class="toc-text">Emscript 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#安装-Emscript"><span class="toc-number">3.1.</span> <span class="toc-text">安装 Emscript</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Hello-world"><span class="toc-number">3.2.</span> <span class="toc-text">Hello world</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#导出C函数"><span class="toc-number">3.3.</span> <span class="toc-text">导出C函数</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#利用Emscript重构模型加载器"><span class="toc-number">4.</span> <span class="toc-text">利用Emscript重构模型加载器</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#修改源代码"><span class="toc-number">4.1.</span> <span class="toc-text">修改源代码</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#导出函数并进行封装"><span class="toc-number">4.2.</span> <span class="toc-text">导出函数并进行封装</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#编译"><span class="toc-number">4.3.</span> <span class="toc-text">编译</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Javscript封装"><span class="toc-number">4.4.</span> <span class="toc-text">Javscript封装</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用"><span class="toc-number">4.5.</span> <span class="toc-text">使用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码"><span class="toc-number">4.6.</span> <span class="toc-text">源码</span></a></li></ol></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        利用WebAssembly实现50倍性能提升
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">程一凡</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2020-05-17T06:55:09.000Z" itemprop="datePublished">2020-05-17</time>
+        
+      
+    </div>
+
+
+      
+
+      
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <style>
+  .align-center {
+    text-align: center;
+  }
+</style>
+
+<p>上一篇博客写的是使用WebGL渲染3D模型，当时遇到一个问题没解决。那就是模型解析速度太慢。对于有40万个顶点，2M大小的 Wavefront .obj 文件，需要30多秒完成解析。关键是，40万个顶点还算是中小型的模型，所以这个速度不能接受。解决浏览器计算的性能问题，首先想到的就是最近非常流行的WebAssembly技术，最终使用WebAssembly重构了模型加载器，解析时间从30多秒缩短到0.6秒，实现了50倍的性能提升。</p>
+<img src="/images/wasm/js_cost.png">
+<p class="align-center">
+<i>Javascript版本</i>
+</p>
+
+<img src="/images/wasm/wasm_cost.png">
+<p class="align-center">
+<i>WebAssembly版本</i>
+</p>
+
+<h1 id="如何实现的？"><a href="#如何实现的？" class="headerlink" title="如何实现的？"></a>如何实现的？</h1><p><img src="/images/wasm/overview.png" alt></p>
+<p>简单来说就是：利用<code>Emscripten</code>这个工具将C语言实现的模型加载库编译成二进制的WebAssembly，最后浏览器直接加载运行。</p>
+<p>下面将分别介绍<code>WebAssembly</code>和<code>Emscripten</code>，最后介绍一些比较关键的实现细节。</p>
+<h1 id="WebAssembly-介绍"><a href="#WebAssembly-介绍" class="headerlink" title="WebAssembly 介绍"></a>WebAssembly 介绍</h1><p>可以简单总结如下：</p>
+<ol>
+<li>WebAssembly（缩写为Wasm）是一个二进制指令格式</li>
+<li>wasm在一个非常简单高效的基于栈的虚拟机中运行</li>
+<li>目前有各大主流浏览器、Nodejs、wapm.io（Rust编写的Wasm虚拟机命令行工具）</li>
+<li>目前Wasm生态已有成熟工具可以将高级语言如 C / C++ / C# /Rust / Go / Python 编译成Wasm，并在浏览器或者Nodejs中运行</li>
+</ol>
+<p>有了Wasm后，使用其他语言写的项目，可以直接编译并在浏览器运行。以下有几个例子可以看看：</p>
+<p><a href="https://wapm.io/package/openssl#shell" target="_blank" rel="noopener">在浏览器运行的openssl</a><br><a href="https://wapm.io/package/rustpython#shell" target="_blank" rel="noopener">用Rust编写的Python解释器，在浏览器运行</a></p>
+<p>Wasm的文本格式为Wat（WebAssembly Text Format)，详细的规范可以在<a href="https://webassembly.github.io/spec/core/text/index.html" target="_blank" rel="noopener">这里</a>查阅。我们可以使用wabt（WebAssembly Binary Toolkit）这个工具将wat文件转换成二进制wasm文件。</p>
+<p>下面通过几个小例子的实践，来了解一些基本的概念和语法</p>
+<h2 id="安装Wabt"><a href="#安装Wabt" class="headerlink" title="安装Wabt"></a>安装Wabt</h2><p>访问 <a href="https://github.com/WebAssembly/wabt" target="_blank" rel="noopener">Github</a> 安装文档进行安装，安装完成后，可以使用<code>wat2wasm</code>将wat转换成wasm，<code>wasm2wat</code>将wasm转为wat</p>
+<h2 id="在浏览器的实践"><a href="#在浏览器的实践" class="headerlink" title="在浏览器的实践"></a>在浏览器的实践</h2><p>准备网页环境，并实现一个可以加载wasm模块的函数</p>
+<p>新建<code>index.html</code>文件：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">"/index.js"</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>新建<code>index.js</code>文件：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 从`url`加载二进制wasm代码，并执行，然后导出wasm定义的模块</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">loadWasmModules</span>(<span class="params">url, imports</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> fetch(url)</span><br><span class="line">  .then(<span class="function">(<span class="params">resp</span>) =&gt;</span> resp.arrayBuffer())</span><br><span class="line">  .then(<span class="function">(<span class="params">buffer</span>) =&gt;</span> WebAssembly.instantiate(buffer, imports))</span><br><span class="line">  .then(<span class="function">(<span class="params">&#123; instance &#125;</span>) =&gt;</span> instance.exports);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="从Javascript执行Wasm函数"><a href="#从Javascript执行Wasm函数" class="headerlink" title="从Javascript执行Wasm函数"></a>从Javascript执行Wasm函数</h3><p>新建<code>add.wat</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">(module</span><br><span class="line">  (func (param i32) (param i32) (result i32)</span><br><span class="line">    get_local 0  ;; push 索引为0的参数</span><br><span class="line">    get_local 1  ;; push 索引为1的参数</span><br><span class="line">    i32.add ;; pop两个操作数执行相加，并push执行得到的结果</span><br><span class="line">    ;; 栈里留下一个操作数，与result匹配</span><br><span class="line">    ;; 如果没有声明result，则函数执行完后，栈必须是空的</span><br><span class="line">  )</span><br><span class="line">  (export &quot;add&quot; (func 0))</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>将<code>add.wat</code>转换成<code>add.wasm</code><br><code>$ wat2wasm add.wat -o add.wasm</code></p>
+<p>在<code>index.js</code>中添加</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">loadWasmModules(<span class="string">'/add.wasm'</span>, &#123;&#125;).then(<span class="function">(<span class="params">&#123; add &#125;</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="built_in">console</span>.log(add(<span class="number">1</span>, <span class="number">2</span>));  <span class="comment">// 3</span></span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>得到了正确的结果<code>3</code></p>
+<p>解释一下上面的wasm程序：</p>
+<ul>
+<li>在wasm程序中，用两个分号<code>;;</code>表示注释</li>
+<li>一个wasm程序就是一个<code>module</code>，用一对括号包裹起来<code>(module)</code>，<code>module</code>后面可以声明多个模块，分别用一对括号包裹起来：<code>(module (module1) (module2) (module3))</code></li>
+<li><code>func</code>关键字定义一个函数模块</li>
+<li><code>export</code>关键字表示导出一个模块，并且对其命名</li>
+</ul>
+<p><code>func</code>定义一个函数，用<code>param</code>声明参数类型，<code>result</code>声明结果类型。<code>i32</code>表示32位正数类型，<code>f64</code>表示64位浮点数类型。在参数声明和结果声明之后，可以定义一系列的指令，用换行隔开。</p>
+<p>wasm中的函数是一个栈机器，<code>get_local</code>指令按照索引往栈里push一个数据，<code>i32.add</code>指令从栈里面pop出两个数据，并且将相加的结果push进栈中，函数执行完后，栈要么为空（没有申明result），要么留下一个数据（声明了result）。<br><code>add</code>的执行过程如下<br><img src="/images/wasm/stack.gif" alt></p>
+<h3 id="从Wasm中执行Javascript函数"><a href="#从Wasm中执行Javascript函数" class="headerlink" title="从Wasm中执行Javascript函数"></a>从Wasm中执行Javascript函数</h3><p>在wasm中可以声明<code>import</code>模块，来从Javascrip导入模块</p>
+<p>新建<code>calljs.wat</code>文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">(module</span><br><span class="line">  (import &quot;imports&quot; &quot;logFromJs&quot; (func $logFromJs (param i32)))</span><br><span class="line">  (func $test</span><br><span class="line">    i32.const 12</span><br><span class="line">    call $logFromJs</span><br><span class="line">  )</span><br><span class="line">  (start $test)</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>修改<code>index.js</code></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">logFromJs</span>(<span class="params">x</span>) </span>&#123;</span><br><span class="line">  <span class="built_in">console</span>.log(<span class="string">`from js: <span class="subst">$&#123;x&#125;</span>!`</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">loadWasmModules(<span class="string">'/calljs.wasm'</span>, &#123; <span class="attr">imports</span>: &#123; logFromJs &#125; &#125;).then(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">  <span class="comment">// from js: 12!</span></span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>加载wasm模块后，控制台会打印：from js: 12!</p>
+<p>解释一下程序：</p>
+<ul>
+<li>可以使用<code>$name</code>的方式来给索引取一个别名，后续不用再手写索引，直接可以用别名替代</li>
+<li>使用<code>import</code>从外部导入模块（这里是函数），并且声明类型</li>
+<li><code>i32.const 12</code> 表示往栈中push一个值：12</li>
+<li><code>call $logFromJs</code> 表示执行<code>$logFromJs</code>这个函数，从堆中pop一个i32类型的值，执行后无返回值，栈为空</li>
+<li><code>start</code> 表示指定一个开始函数，即这个函数会被直接执行</li>
+</ul>
+<h3 id="共享内存"><a href="#共享内存" class="headerlink" title="共享内存"></a>共享内存</h3><p>Wasm最关键的特性之一就是共享内存，即Wasm程序可以和外部程序（这里指Javascript）共享一段内存。一般有2中方式：</p>
+<ol>
+<li>Wasm程序声明一段内存，并且导出</li>
+<li>外部程序声明一段内存，然后导入到Wasm程序</li>
+</ol>
+<h3 id="从Wasm导出内存"><a href="#从Wasm导出内存" class="headerlink" title="从Wasm导出内存"></a>从Wasm导出内存</h3><p>新建<code>exportmem.wat</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">(module</span><br><span class="line">  (memory $mem 1) ;; 申请一页内存(64k)</span><br><span class="line">  (func $start</span><br><span class="line">    i32.const 0 </span><br><span class="line">    i32.const 42</span><br><span class="line">    i32.store    ;; 往偏移0字节的内存位置，存储32位整数：42</span><br><span class="line">    i32.const 4</span><br><span class="line">    i32.const 31</span><br><span class="line">    i32.store    ;; 往偏移4字节的内存位置，存储32位整数：32</span><br><span class="line">  )</span><br><span class="line">  (start $start)</span><br><span class="line">  (export &quot;mem&quot; (memory $mem)) ;; 导出内存</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>修改<code>index.js</code></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">loadWasmModules(<span class="string">'/exportmem.wasm'</span>, &#123;&#125;).then(<span class="function">(<span class="params">&#123; mem &#125;</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">const</span> view = <span class="keyword">new</span> <span class="built_in">Int32Array</span>(mem.buffer);</span><br><span class="line">  <span class="built_in">console</span>.log(view[<span class="number">0</span>]); <span class="comment">// 42</span></span><br><span class="line">  <span class="built_in">console</span>.log(view[<span class="number">1</span>]); <span class="comment">// 31</span></span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>加载wasm模块后，控制台会打印：42 31</p>
+<p>解释一下程序：</p>
+<ul>
+<li><code>memory</code>用来申请一块指定大小的连续内存，单位为页，一页等于64kb</li>
+<li><code>i32.store</code>会从栈中push出两个值，分别是偏移量，以及需要存储的32位整数</li>
+</ul>
+<h3 id="导入外部内存到Wasm"><a href="#导入外部内存到Wasm" class="headerlink" title="导入外部内存到Wasm"></a>导入外部内存到Wasm</h3><p>修改<code>index.js</code></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> mem = <span class="keyword">new</span> WebAssembly.Memory(&#123; <span class="attr">initial</span>: <span class="number">1</span> &#125;);</span><br><span class="line">loadWasmModules(<span class="string">'/importmem.wasm'</span>, &#123; <span class="attr">imports</span>: &#123; mem &#125; &#125;).then(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">const</span> view = <span class="keyword">new</span> <span class="built_in">Int32Array</span>(mem.buffer);</span><br><span class="line">  <span class="built_in">console</span>.log(view[<span class="number">0</span>]);</span><br><span class="line">  <span class="built_in">console</span>.log(view[<span class="number">1</span>]);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>新建<code>importmem.wat</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">(module</span><br><span class="line">  (import &quot;imports&quot; &quot;mem&quot; (memory $mem 1))</span><br><span class="line">  (func $start </span><br><span class="line">    i32.const 0  </span><br><span class="line">    i32.const 42</span><br><span class="line">    i32.store</span><br><span class="line">    i32.const 4</span><br><span class="line">    i32.const 31</span><br><span class="line">    i32.store</span><br><span class="line">  )</span><br><span class="line">  (start $start)</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>加载wasm模块后，控制台会打印：42 31</p>
+<h1 id="Emscript-介绍"><a href="#Emscript-介绍" class="headerlink" title="Emscript 介绍"></a>Emscript 介绍</h1><p><code>Emscript</code>是一个工具集，可以将C / C++ 代码编译成WebAssembly</p>
+<h2 id="安装-Emscript"><a href="#安装-Emscript" class="headerlink" title="安装 Emscript"></a>安装 Emscript</h2><p>按照官网<a href="https://emscripten.org/docs/getting_started/downloads.html" target="_blank" rel="noopener">这个链接</a>的步骤进行安装<br>安装完毕后将可以使用<code>emcc</code>这个命令</p>
+<h2 id="Hello-world"><a href="#Hello-world" class="headerlink" title="Hello world"></a>Hello world</h2><p>使用C语言编程输出<code>Hello world</code>，然后编译成Wasm在浏览器中运行</p>
+<p>新建文件<code>helloworld.c</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;emscripten.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123; </span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"Hello world\n"</span>); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>使用<code>emcc</code>编译<br><code>$ emcc helloworld.c -s ENVIRONMENT=&quot;web&quot; -o helloworld.js</code><br>然后会生成<code>helloworld.js</code>和<code>helloworld.wasm</code>这两个文件</p>
+<p>修改<code>index.html</code></p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">"/helloworld.js"</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>刷新页面，控制台会打印出<code>Hello world</code></p>
+<h2 id="导出C函数"><a href="#导出C函数" class="headerlink" title="导出C函数"></a>导出C函数</h2><p>我们用C写一个<code>add</code>方法，并在浏览器中调用</p>
+<p>新建<code>cadd.c</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;emscripten.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">add</span><span class="params">(<span class="keyword">int</span> x, <span class="keyword">int</span> y)</span> </span>&#123; </span><br><span class="line">  <span class="keyword">return</span> x + y; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>编译<br><code>$ emcc cadd.c -s ENVIRONMENT=&quot;web&quot; -s EXPORTED_FUNCTIONS=&quot;[&#39;_add&#39;]&quot; -o cadd.js</code></p>
+<p>修改<code>index.html</code></p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">"/cadd.js"</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="javascript">      <span class="built_in">console</span>.log(Module._add(<span class="number">1</span>, <span class="number">2</span>));</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>刷新页面，控制打印出：3</p>
+<h1 id="利用Emscript重构模型加载器"><a href="#利用Emscript重构模型加载器" class="headerlink" title="利用Emscript重构模型加载器"></a>利用Emscript重构模型加载器</h1><p>首先从Github上搜索标星比较多的<code>Wavefront .obj</code>加载器项目，最后选定<code>tinyobjloader-c</code>这个项目，性能也不错</p>
+<h2 id="修改源代码"><a href="#修改源代码" class="headerlink" title="修改源代码"></a>修改源代码</h2><p>首先folk了一份，因为原本的数据结构并不能满足项目需求，需要对源码进行了一些修改，对数据进行组装，修改了<code>tinyobj_loader_c.h</code>这个文件的部分代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> num_vertices;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> num_normals;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> num_texcoords;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> num_faces;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> num_face_num_verts;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> num_material_stops;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">int</span> pad0;</span><br><span class="line">  <span class="keyword">int</span> pad1;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">float</span>* combined_vertices;</span><br><span class="line">  <span class="keyword">float</span>* vertices;</span><br><span class="line">  <span class="keyword">float</span>* normals;</span><br><span class="line">  <span class="keyword">float</span>* texcoords;</span><br><span class="line">  <span class="keyword">tinyobj_vertex_index_t</span>* faces;</span><br><span class="line">  <span class="keyword">int</span>* face_num_verts;</span><br><span class="line">  material_stop* material_stops;</span><br><span class="line">  <span class="keyword">char</span> material_lib[MAX_MATERIAL_NAME_LEN];</span><br><span class="line">&#125; <span class="keyword">tinyobj_attrib_t</span>;</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Construct composite vertex */</span></span><br><span class="line"><span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; num_f; i++) &#123;</span><br><span class="line">  <span class="keyword">tinyobj_vertex_index_t</span>* idx = &amp;attrib-&gt;faces[i];</span><br><span class="line">  <span class="built_in">memcpy</span>(attrib-&gt;combined_vertices + i * <span class="number">8</span>,</span><br><span class="line">          attrib-&gt;vertices + idx-&gt;v_idx * <span class="number">3</span>, <span class="number">12</span>);</span><br><span class="line">  <span class="built_in">memcpy</span>(attrib-&gt;combined_vertices + i * <span class="number">8</span> + <span class="number">3</span>,</span><br><span class="line">          attrib-&gt;texcoords + idx-&gt;vt_idx * <span class="number">2</span>, <span class="number">8</span>);</span><br><span class="line">  <span class="built_in">memcpy</span>(attrib-&gt;combined_vertices + i * <span class="number">8</span> + <span class="number">5</span>,</span><br><span class="line">          attrib-&gt;normals + idx-&gt;vn_idx * <span class="number">3</span>, <span class="number">12</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如图所示</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">                                                        </span><br><span class="line">               vertex                                   </span><br><span class="line"> +-----+-----+-----+-----+-----+-----+                  </span><br><span class="line"> |     |     |     |     |     |     |                  </span><br><span class="line"> | x1  | y1  | z1  | x2  | y2  | z2  |                  </span><br><span class="line"> |     |     |     |     |     |     |                  </span><br><span class="line"> +-----+-----+-----+-----+-----+-----+                  </span><br><span class="line">              texture coords                            </span><br><span class="line"> +-----+-----+-----+-----+                              </span><br><span class="line"> |     |     |     |     |                              </span><br><span class="line"> | x1  | y1  | x2  | y2  |                              </span><br><span class="line"> |     |     |     |     |                              </span><br><span class="line"> +-----+-----+-----+-----+                              </span><br><span class="line">              normals                                   </span><br><span class="line"> +-----+-----+-----+-----+-----+-----+                  </span><br><span class="line"> |     |     |     |     |     |     |                  </span><br><span class="line"> | x1  | y1  | z1  | x2  | y2  | z2  |                  </span><br><span class="line"> |     |     |     |     |     |     |                  </span><br><span class="line"> +-----+-----+-----+-----+-----+-----+                  </span><br><span class="line">                                     </span><br><span class="line">                  |                                     </span><br><span class="line">                  |                                     </span><br><span class="line">                  v                                     </span><br><span class="line">              combined vertex                           </span><br><span class="line">+-----+-----+-----+-----+-----+-----+-----+-----+       </span><br><span class="line">|     |     |     |     |     |     |     |     |       </span><br><span class="line">| x1  | y1  | z1  | x1  | x2  | x1  | y1  | z1  | ......</span><br><span class="line">|     |     |     |     |     |     |     |     |       </span><br><span class="line">+-----+-----+-----+-----+-----+-----+-----+-----+       </span><br><span class="line">|     vertex      |  texcoord |     normal      |       </span><br><span class="line">|                 |           |                 |</span><br></pre></td></tr></table></figure>
+
+<h2 id="导出函数并进行封装"><a href="#导出函数并进行封装" class="headerlink" title="导出函数并进行封装"></a>导出函数并进行封装</h2><p>需要将用到的函数进行封装，提供相应数据的内存地址映射，这样Javascript可以直接从共享内存取到对应的数据wasm程序计算好的数据</p>
+<p>新建<code>tinyobj_loader.c</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;emscripten.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">"tinyobj_loader_c.h"</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> TINYOBJ_LOADER_C_IMPLEMENTATION</span></span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">tinyobj_parse_obj</span><span class="params">(<span class="keyword">tinyobj_attrib_t</span>* attrib, <span class="keyword">const</span> <span class="keyword">char</span>* buf, <span class="keyword">size_t</span> len)</span></span>;</span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">tinyobj_attrib_free</span><span class="params">(<span class="keyword">tinyobj_attrib_t</span>* attrib)</span></span>;</span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">get_attr_size</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> <span class="keyword">sizeof</span>(<span class="keyword">tinyobj_attrib_t</span>); &#125;</span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span>* <span class="title">get_vertices_slice</span><span class="params">(<span class="keyword">tinyobj_attrib_t</span>* attrib)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">long</span> arr[<span class="number">2</span>] = &#123;&#125;;</span><br><span class="line">  arr[<span class="number">0</span>] = attrib-&gt;vertices;</span><br><span class="line">  arr[<span class="number">1</span>] = arr[<span class="number">0</span>] + attrib-&gt;num_vertices * <span class="number">3</span> * <span class="keyword">sizeof</span>(<span class="keyword">float</span>);</span><br><span class="line">  <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span>* <span class="title">get_texcoords_slice</span><span class="params">(<span class="keyword">tinyobj_attrib_t</span>* attrib)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">long</span> arr[<span class="number">2</span>] = &#123;&#125;;</span><br><span class="line">  arr[<span class="number">0</span>] = attrib-&gt;texcoords;</span><br><span class="line">  arr[<span class="number">1</span>] = arr[<span class="number">0</span>] + attrib-&gt;num_texcoords * <span class="number">2</span> * <span class="keyword">sizeof</span>(<span class="keyword">float</span>);</span><br><span class="line">  <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span>* <span class="title">get_normals_slice</span><span class="params">(<span class="keyword">tinyobj_attrib_t</span>* attrib)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">long</span> arr[<span class="number">2</span>] = &#123;&#125;;</span><br><span class="line">  arr[<span class="number">0</span>] = attrib-&gt;normals;</span><br><span class="line">  arr[<span class="number">1</span>] = arr[<span class="number">0</span>] + attrib-&gt;num_normals * <span class="number">3</span> * <span class="keyword">sizeof</span>(<span class="keyword">float</span>);</span><br><span class="line">  <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">char</span>* <span class="title">get_material_lib</span><span class="params">(<span class="keyword">tinyobj_attrib_t</span>* attrib)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> attrib-&gt;material_lib;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span>* <span class="title">get_material_stops_slice</span><span class="params">(<span class="keyword">tinyobj_attrib_t</span>* attrib)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">long</span> arr[<span class="number">2</span>] = &#123;&#125;;</span><br><span class="line">  arr[<span class="number">0</span>] = attrib-&gt;material_stops;</span><br><span class="line">  arr[<span class="number">1</span>] = arr[<span class="number">0</span>] + attrib-&gt;num_material_stops * (<span class="number">80</span> + <span class="keyword">sizeof</span>(<span class="keyword">unsigned</span> <span class="keyword">long</span>));</span><br><span class="line">  <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">EMSCRIPTEN_KEEPALIVE</span><br><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span>* <span class="title">get_combined_vertices_slice</span><span class="params">(<span class="keyword">tinyobj_attrib_t</span>* attrib)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> num_faces = attrib-&gt;num_faces;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">long</span> arr[<span class="number">2</span>] = &#123;&#125;;</span><br><span class="line">  arr[<span class="number">0</span>] = attrib-&gt;combined_vertices;</span><br><span class="line">  arr[<span class="number">1</span>] = arr[<span class="number">0</span>] + <span class="number">32</span> * num_faces;</span><br><span class="line">  <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="编译"><a href="#编译" class="headerlink" title="编译"></a>编译</h2><p>使用如下命令进行编译，配置128MB的共享内存</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span> emcc tinyobj_loader.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['cwrap', 'stringToUTF8', 'UTF8ToString']" -s EXPORTED_FUNCTIONS="['_get_attr_size', '_tinyobj_attrib_free', '_tinyobj_parse_obj', '_get_material_lib', '_get_material_stops_slice', '_get_combined_vertices_slice']" -s MODULARIZE=1 -s ENVIRONMENT=web -s INITIAL_MEMORY=134217728 -o wamod.js</span><br></pre></td></tr></table></figure>
+
+<h2 id="Javscript封装"><a href="#Javscript封装" class="headerlink" title="Javscript封装"></a>Javscript封装</h2><p>Javascript根据地址映射，取到对应函数的计算结果的buffer数据</p>
+<p>新建<code>objloader.js</code></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> WAModule <span class="keyword">from</span> <span class="string">'./wamod'</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> wamodule = WAModule();</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> getAttrSize = wamodule.cwrap(<span class="string">'get_attr_size'</span>, <span class="string">'number'</span>, []);</span><br><span class="line"><span class="keyword">const</span> tinyobjAttribFree = wamodule.cwrap(<span class="string">'tinyobj_attrib_free'</span>, <span class="literal">null</span>, [<span class="string">'number'</span>]);</span><br><span class="line"><span class="keyword">const</span> tinyobjParseObj = wamodule.cwrap(<span class="string">'tinyobj_parse_obj'</span>, <span class="literal">null</span>, [<span class="string">'number'</span>, <span class="string">'number'</span>, <span class="string">'number'</span>]);</span><br><span class="line"><span class="keyword">const</span> getCombinedVerticesSlice = wamodule.cwrap(<span class="string">'get_combined_vertices_slice'</span>, <span class="string">'number'</span>, [</span><br><span class="line">  <span class="string">'number'</span>,</span><br><span class="line">]);</span><br><span class="line"><span class="keyword">const</span> getMaterialStopsSlice = wamodule.cwrap(<span class="string">'get_material_stops_slice'</span>, <span class="string">'number'</span>, [<span class="string">'number'</span>]);</span><br><span class="line"><span class="keyword">const</span> getMaterialLib = wamodule.cwrap(<span class="string">'get_material_lib'</span>, <span class="string">'string'</span>, [<span class="string">'number'</span>]);</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> initializedPromise = <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve</span>) =&gt;</span> &#123;</span><br><span class="line">  wamodule[<span class="string">'onRuntimeInitialized'</span>] = <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    resolve();</span><br><span class="line">  &#125;;</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">parse</span>(<span class="params">src</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> srcLen = src.length;</span><br><span class="line">  <span class="keyword">const</span> attrSize = getAttrSize();</span><br><span class="line">  <span class="keyword">const</span> attrBuf = wamodule._malloc(attrSize);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> srcBuf = wamodule._malloc(srcLen + <span class="number">1</span>);</span><br><span class="line">  wamodule.stringToUTF8(src, srcBuf, srcLen);</span><br><span class="line"></span><br><span class="line">  tinyobjParseObj(attrBuf, srcBuf, srcLen);</span><br><span class="line"></span><br><span class="line">  wamodule._free(srcBuf);</span><br><span class="line">  tinyobjAttribFree(attrBuf);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> attrBuf;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">free</span>(<span class="params">attrBuf</span>) </span>&#123;</span><br><span class="line">  wamodule._free(attrBuf);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">getCombinedVerticesBufferSlice</span>(<span class="params">attrBuf</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> p = getCombinedVerticesSlice(attrBuf);</span><br><span class="line">  <span class="keyword">const</span> view = <span class="keyword">new</span> <span class="built_in">DataView</span>(wamodule.HEAP8.buffer);</span><br><span class="line">  <span class="keyword">return</span> [view.getUint32(p, <span class="literal">true</span>), view.getUint32(p + <span class="number">4</span>, <span class="literal">true</span>)];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">getMaterialStops</span>(<span class="params">attrBuf</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> p = getMaterialStopsSlice(attrBuf);</span><br><span class="line">  <span class="keyword">const</span> view = <span class="keyword">new</span> <span class="built_in">DataView</span>(wamodule.HEAP8.buffer);</span><br><span class="line">  <span class="keyword">const</span> slice = [view.getUint32(p, <span class="literal">true</span>), view.getUint32(p + <span class="number">4</span>, <span class="literal">true</span>)];</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> total = (slice[<span class="number">1</span>] - slice[<span class="number">0</span>]) / <span class="number">84</span>;</span><br><span class="line">  <span class="keyword">const</span> result = [];</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; total; i++) &#123;</span><br><span class="line">    result.push(&#123;</span><br><span class="line">      index: view.getUint32(slice[<span class="number">0</span>] + i * <span class="number">84</span>, <span class="literal">true</span>),</span><br><span class="line">      material: wamodule.UTF8ToString(slice[<span class="number">0</span>] + i * <span class="number">84</span> + <span class="number">4</span>, <span class="number">80</span>),</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">parseOBJ</span>(<span class="params">src</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> ptr = parse(src);</span><br><span class="line">  <span class="keyword">const</span> combinedVerticesSlice = getCombinedVerticesBufferSlice(ptr);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> mtlstops = getMaterialStops(ptr);</span><br><span class="line">  <span class="keyword">const</span> mtllibs = [getMaterialLib(ptr)];</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> vertices = <span class="keyword">new</span> <span class="built_in">Float32Array</span>(</span><br><span class="line">    wamodule.HEAP8.buffer.slice(combinedVerticesSlice[<span class="number">0</span>], combinedVerticesSlice[<span class="number">1</span>])</span><br><span class="line">  );</span><br><span class="line"></span><br><span class="line">  free(ptr);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> &#123; vertices, mtllibs, mtlstops &#125;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="function"><span class="keyword">function</span> <span class="title">getObjLoader</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> initializedPromise.then(<span class="function"><span class="params">()</span> =&gt;</span> (&#123;</span><br><span class="line">    parseOBJ,</span><br><span class="line">  &#125;));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h2><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> getObjLoader <span class="keyword">from</span> <span class="string">'./objloader'</span>;</span><br><span class="line">getObjLoader().then(<span class="function">(<span class="params">loader</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">const</span> &#123;vertices, mtllibs, mtlstops&#125; = loader.parseOBJ(text);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p><code>vertices</code>是整合好的<code>Float32Array</code>类型数据，可以直接通过WebGL输送给GPU进行渲染</p>
+<p>最后对一个2M模型文件进行解析，实现了50倍的性能提升。</p>
+<h2 id="源码"><a href="#源码" class="headerlink" title="源码"></a>源码</h2><p><a href="https://github.com/Mutefish0/webgl-advanced/tree/master/src/lib" target="_blank" rel="noopener">这里</a>可以查看对应的源码</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/about/">关于</a></li>
+         
+          <li><a href="/archives/">归档</a></li>
+         
+          <li><a href="https://github.com/mutefish0">项目</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#如何实现的？"><span class="toc-number">1.</span> <span class="toc-text">如何实现的？</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#WebAssembly-介绍"><span class="toc-number">2.</span> <span class="toc-text">WebAssembly 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#安装Wabt"><span class="toc-number">2.1.</span> <span class="toc-text">安装Wabt</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#在浏览器的实践"><span class="toc-number">2.2.</span> <span class="toc-text">在浏览器的实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#从Javascript执行Wasm函数"><span class="toc-number">2.2.1.</span> <span class="toc-text">从Javascript执行Wasm函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#从Wasm中执行Javascript函数"><span class="toc-number">2.2.2.</span> <span class="toc-text">从Wasm中执行Javascript函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#共享内存"><span class="toc-number">2.2.3.</span> <span class="toc-text">共享内存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#从Wasm导出内存"><span class="toc-number">2.2.4.</span> <span class="toc-text">从Wasm导出内存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#导入外部内存到Wasm"><span class="toc-number">2.2.5.</span> <span class="toc-text">导入外部内存到Wasm</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Emscript-介绍"><span class="toc-number">3.</span> <span class="toc-text">Emscript 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#安装-Emscript"><span class="toc-number">3.1.</span> <span class="toc-text">安装 Emscript</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Hello-world"><span class="toc-number">3.2.</span> <span class="toc-text">Hello world</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#导出C函数"><span class="toc-number">3.3.</span> <span class="toc-text">导出C函数</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#利用Emscript重构模型加载器"><span class="toc-number">4.</span> <span class="toc-text">利用Emscript重构模型加载器</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#修改源代码"><span class="toc-number">4.1.</span> <span class="toc-text">修改源代码</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#导出函数并进行封装"><span class="toc-number">4.2.</span> <span class="toc-text">导出函数并进行封装</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#编译"><span class="toc-number">4.3.</span> <span class="toc-text">编译</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Javscript封装"><span class="toc-number">4.4.</span> <span class="toc-text">Javscript封装</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用"><span class="toc-number">4.5.</span> <span class="toc-text">使用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码"><span class="toc-number">4.6.</span> <span class="toc-text">源码</span></a></li></ol></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/05/17/webassembly/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://yoursite.com/2020/05/17/webassembly/&text=利用WebAssembly实现50倍性能提升"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/05/17/webassembly/&is_video=false&description=利用WebAssembly实现50倍性能提升"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=利用WebAssembly实现50倍性能提升&body=Check out this article: http://yoursite.com/2020/05/17/webassembly/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://yoursite.com/2020/05/17/webassembly/&title=利用WebAssembly实现50倍性能提升"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/05/17/webassembly/&name=利用WebAssembly实现50倍性能提升&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2020 Ivancing
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/about/">关于</a></li>
+         
+          <li><a href="/archives/">归档</a></li>
+         
+          <li><a href="https://github.com/mutefish0">项目</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+    <!-- jquery -->
+<script src="/lib/jquery/jquery.min.js"></script>
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+<!-- clipboard -->
+
+  <script src="/lib/clipboard/clipboard.min.js"></script>
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight .code pre").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      target: function(trigger) {
+        return trigger.nextElementSibling;
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+<script src="/js/main.js"></script>
+<!-- search -->
+
+<!-- Google Analytics -->
+
+    <script type="text/javascript">
+        (function(i,s,o,g,r,a,m) {i['GoogleAnalyticsObject']=r;i[r]=i[r]||function() {
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-146722305-1', 'auto');
+        ga('send', 'pageview');
+    </script>
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>
